@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Last Message</title>
+<style>
+  :root {
+    --text: #f2efec;
+    --muted: #9b9dab;
+    --accent: #b8a4ff;
+    --accent2: #8f7ae6;
+    --warm: #f0b998;
+    --beat: 1.6s;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; min-height: 100vh; background: #07080f; color: var(--text);
+    font-family: Georgia, "Times New Roman", serif; overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- atmosphere layers ---------- */
+  .sky, .sky i { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .sky i { opacity: 0; transition: opacity 5s ease; }
+  .sky i.on { opacity: 1; }
+  .sky i[data-m="night"] { background: linear-gradient(#06070e, #0f1223 60%, #171a31); }
+  .sky i[data-m="rain"]  { background: linear-gradient(#070a12, #101a2b 60%, #1a2536); }
+  .sky i[data-m="heavy"] { background: linear-gradient(#040408, #0a0a13 60%, #130f1b); }
+  .sky i[data-m="warm"]  { background: linear-gradient(#120f19, #2a1c2a 60%, #3d2a2f); }
+  .sky i[data-m="dawn"]  { background: linear-gradient(#1c1f36, #4a4064 45%, #a8737f 80%, #dfa186); }
+  .sky i[data-m="day"]   { background: linear-gradient(#2b3b5e, #7e9fc9 55%, #f2d9b6); }
+  .sun {
+    position: fixed; left: 50%; bottom: -30vh; width: 110vmax; height: 110vmax; z-index: 0; pointer-events: none;
+    transform: translateX(-50%) translateY(55%);
+    background: radial-gradient(circle, rgba(255,205,150,.55), rgba(255,170,120,.12) 40%, transparent 62%);
+    opacity: 0; transition: transform 10s ease, opacity 6s ease;
+  }
+  body[data-mood="warm"] .sun { opacity: .18; transform: translateX(-50%) translateY(48%); }
+  body[data-mood="dawn"] .sun { opacity: .6; transform: translateX(-50%) translateY(30%); }
+  body[data-mood="day"]  .sun { opacity: .9; transform: translateX(-50%) translateY(8%); }
+  #fx { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+  .vig {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,.78) 100%);
+  }
+  .vig.on { animation: ache 3.4s ease both; }
+  body[data-mood="heavy"] .vig:not(.on) { animation: breathe 6s ease-in-out infinite; }
+  .glow {
+    position: fixed; left: 0; right: 0; bottom: 0; height: 55vh; z-index: 2; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at 50% 100%, rgba(255,190,140,.35), transparent 65%);
+  }
+  .glow.on { animation: glow 2.4s ease both; }
+  .grain {
+    position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+  }
+
+  /* ---------- intro ---------- */
+  .intro {
+    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 30px; transition: opacity 1.4s ease, visibility 1.4s;
+  }
+  .intro.gone { opacity: 0; visibility: hidden; }
+  .eyebrow { color: var(--accent); font: 600 11px/1.4 system-ui, sans-serif; letter-spacing: .28em; text-transform: uppercase; margin-bottom: 14px; animation: fadeDown 1.4s ease both; }
+  .intro h1 { margin: 0; font-weight: 400; font-size: clamp(42px, 10vw, 84px); letter-spacing: -.04em; animation: titleIn 2.4s .3s ease both; }
+  .intro .sub { color: var(--muted); font: 15px/1.7 system-ui, sans-serif; margin: 16px 0 0; max-width: 430px; animation: fadeUp 1.6s 1.2s ease both; }
+  .intro .note { color: #7d7f8d; font: 12.5px/1.65 system-ui, sans-serif; max-width: 420px; margin: 34px 0 26px; padding: 14px 18px; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: rgba(255,255,255,.025); animation: fadeUp 1.6s 2s ease both; }
+  .begin { width: auto; display: inline-block; text-align: center; padding: 13px 34px; border-radius: 40px; animation: fadeUp 1.6s 2.6s ease both; }
+
+  /* ---------- app ---------- */
+  .app.on { opacity: 1; }
+  .ecg { width: 62px; height: 22px; overflow: visible; }
+  .ecg path { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 90; stroke-dashoffset: 90; animation: ecg var(--beat) linear infinite; filter: drop-shadow(0 0 4px var(--accent)); }
+  .closeness { display: flex; align-items: center; gap: 8px; }
+  .bar { width: 64px; height: 3px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .bar b { display: block; height: 100%; width: 6%; border-radius: 4px; background: linear-gradient(90deg, var(--accent2), var(--warm)); box-shadow: 0 0 10px var(--warm); transition: width 1.4s ease; }
+  .progress { height: 2px; background: rgba(255,255,255,.06); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+  .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent2), var(--warm)); transition: width 1.4s ease; }
+
+
+  .chcard { text-align: center; margin: 70px 0 56px; animation: chIn 2.2s ease both; transition: margin .8s ease, opacity .8s ease; }
+  .chcard .num { color: var(--accent); font: 600 11px/1 system-ui, sans-serif; letter-spacing: .4em; text-transform: uppercase; margin-bottom: 14px; }
+  .chcard h2 { margin: 0; font-weight: 400; font-size: clamp(28px, 6vw, 44px); letter-spacing: -.02em; text-shadow: 0 0 30px rgba(184,164,255,.35); }
+  .chcard.settle { opacity: .45; margin: 40px 0 34px; }
+
+  .narr { color: #c9c8d2; font-style: italic; line-height: 1.95; margin: 26px 4px; text-shadow: 0 1px 14px rgba(0,0,0,.6); animation: narrIn 1.8s ease both; }
+
+  .row { display: flex; flex-direction: column; align-items: flex-start; margin: 5px 0; }
+  .row.r { align-items: flex-end; }
+  .who { color: var(--muted); font: 600 10px/1 system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; margin: 14px 8px 6px; }
+  .bub {
+    max-width: 82%; padding: 12px 17px; border-radius: 19px 19px 19px 5px; background: rgba(34,37,52,.88);
+    border: 1px solid rgba(255,255,255,.05); line-height: 1.6; font-size: 17px; box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    animation: bubIn .5s cubic-bezier(.2,.9,.3,1.2) both; backdrop-filter: blur(4px);
+  }
+  .row.r .bub { border-radius: 19px 19px 5px 19px; background: rgba(66,52,100,.82); border-color: rgba(184,164,255,.16); }
+  .bub.x { background: rgba(52,40,44,.86); border-color: rgba(240,185,152,.14); }
+  .bub.heavy {
+    background: rgba(40,28,38,.92); border-color: rgba(240,185,152,.3);
+    box-shadow: 0 0 40px rgba(240,185,152,.12), 0 14px 40px rgba(0,0,0,.3);
+    animation: bubIn .8s ease both, heavyPulse 4s ease-in-out infinite;
+  }
+  .bub .w { display: inline-block; opacity: 0; filter: blur(7px); animation: wordIn 1s ease both; }
+
+  .typing { display: inline-flex; gap: 5px; padding: 14px 17px; margin: 6px 0; border-radius: 19px; background: rgba(34,37,52,.7); animation: bubIn .3s ease both; }
+  .typing.r { align-self: flex-end; background: rgba(66,52,100,.6); }
+  .typing i { width: 6px; height: 6px; border-radius: 50%; background: #9193a2; animation: bounce 1.2s infinite; }
+  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+
+  .choices.out { animation: fadeOut .5s ease both; }
+  .choices:empty { padding: 0; }
+  button {
+    position: relative; overflow: hidden; width: 100%; border: 1px solid rgba(255,255,255,.1); background: rgba(24,26,38,.9); color: #ecebea;
+    padding: 15px 17px; border-radius: 14px; text-align: left; font: 15.5px/1.5 system-ui, sans-serif; cursor: pointer;
+    transition: transform .25s ease, border-color .25s ease, background .25s ease, box-shadow .25s ease;
+    animation: choiceIn .7s ease both;
+  }
+  button:hover, button:focus-visible { transform: translateY(-2px); border-color: rgba(184,164,255,.65); background: #23253a; box-shadow: 0 10px 30px rgba(0,0,0,.3), 0 0 22px rgba(184,164,255,.15); outline: none; }
+  button:active { transform: translateY(0); }
+  button.picked { border-color: var(--warm); background: #2e2430; }
+  button .n { color: var(--accent); font-size: 11px; margin-right: 10px; }
+  .ripple { position: absolute; border-radius: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; background: radial-gradient(circle, rgba(240,185,152,.6), transparent 70%); animation: ripple 1s ease-out both; pointer-events: none; }
+  .float { position: fixed; z-index: 30; pointer-events: none; color: var(--warm); text-shadow: 0 0 14px var(--warm); animation: floatUp 2.6s ease-out both; }
+
+  /* ---------- ending ---------- */
+  .endcard { text-align: center; padding: 50px 6px 80px; animation: endIn 2s ease both; }
+  .endcard .heart { font-size: 40px; color: #ffd1b3; text-shadow: 0 0 30px #ffb98f; animation: pulse var(--beat) ease-in-out infinite; }
+  .endcard h2 { font-weight: 400; font-size: clamp(30px, 6vw, 46px); margin: 18px 0 8px; letter-spacing: -.02em; }
+  .endcard .the-end { color: var(--muted); font: 600 11px/1 system-ui, sans-serif; letter-spacing: .4em; text-transform: uppercase; }
+  .recap { margin: 40px auto 0; max-width: 460px; text-align: left; font: 14px/1.7 system-ui, sans-serif; color: #d6d3d6; }
+  .recap h3 { color: var(--accent); font: 600 10px/1 system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; }
+  .recap ul { list-style: none; margin: 0; padding: 0; }
+  .recap li { padding: 7px 0 7px 16px; border-left: 2px solid rgba(240,185,152,.4); margin-bottom: 6px; opacity: 0; animation: fadeUp .8s ease both; }
+  .care { margin: 36px auto 0; max-width: 460px; font: 13px/1.7 system-ui, sans-serif; color: #c5c2c8; padding: 16px 18px; border-radius: 14px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.08); text-align: left; }
+  .restart { width: auto; display: inline-block; margin-top: 34px; padding: 12px 28px; border-radius: 40px; text-align: center; }
+
+  /* ---------- keyframes ---------- */
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
+  @keyframes titleIn { from { opacity: 0; letter-spacing: .25em; filter: blur(14px); } to { opacity: 1; letter-spacing: -.04em; filter: blur(0); } }
+  @keyframes chIn { 0% { opacity: 0; transform: scale(.94); filter: blur(10px); } 100% { opacity: 1; transform: none; filter: blur(0); } }
+  @keyframes narrIn { from { opacity: 0; filter: blur(5px); transform: translateY(8px); } to { opacity: .95; filter: blur(0); transform: none; } }
+  @keyframes bubIn { from { opacity: 0; transform: translateY(12px) scale(.95); } to { opacity: 1; transform: none; } }
+  @keyframes choiceIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes wordIn { to { opacity: 1; filter: blur(0); } }
+  @keyframes heavyPulse { 0%,100% { box-shadow: 0 0 30px rgba(240,185,152,.08), 0 14px 40px rgba(0,0,0,.3); } 50% { box-shadow: 0 0 55px rgba(240,185,152,.22), 0 14px 40px rgba(0,0,0,.3); } }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+  @keyframes ecg { 0% { stroke-dashoffset: 90; opacity: 1; } 60% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+  @keyframes ache { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes breathe { 0%,100% { opacity: .1; } 50% { opacity: .5; } }
+  @keyframes glow { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes ripple { to { transform: scale(26); opacity: 0; } }
+  @keyframes floatUp { 0% { opacity: 0; transform: translateY(0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-130px) scale(1.4); } }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 15% { transform: scale(1.16); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } }
+  @keyframes endIn { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 600px) { .bub { max-width: 90%; font-size: 16.5px; } .bar { width: 44px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01s !important; animation-delay: 0s !important; transition-duration: .01s !important; } .bub .w { opacity: 1; filter: none; } }
+
+  /* ---------- phone device ---------- */
+  body { overflow: hidden; height: 100vh; }
+  .app { position: relative; z-index: 5; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 14px; opacity: 0; transition: opacity 1.6s ease; }
+  .device {
+    position: relative; width: min(410px, 100%); height: min(880px, calc(100vh - 28px)); padding: 11px; border-radius: 56px;
+    background: linear-gradient(145deg, #3a3c52, #14151e 55%, #272938);
+    box-shadow: 0 0 0 1.5px #44465c, 0 0 0 5px rgba(0,0,0,.35), 0 50px 100px rgba(0,0,0,.65), 0 0 100px rgba(184,164,255,.2), inset 0 0 6px rgba(255,255,255,.14);
+    animation: phoneIn 1.6s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .device::before { content: ""; position: absolute; left: -4px; top: 150px; width: 4px; height: 52px; border-radius: 3px 0 0 3px; background: #3a3c52; box-shadow: 0 70px 0 #3a3c52; }
+  .device::after { content: ""; position: absolute; right: -4px; top: 210px; width: 4px; height: 84px; border-radius: 0 3px 3px 0; background: #3a3c52; }
+  .screen {
+    position: relative; height: 100%; border-radius: 45px; overflow: hidden; display: flex; flex-direction: column;
+    background: linear-gradient(rgba(10,11,19,.9), rgba(8,9,16,.86)); backdrop-filter: blur(18px);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+  .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 45px; background: linear-gradient(120deg, rgba(255,255,255,.06), transparent 28%); }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 108px; height: 30px; border-radius: 20px; background: #000; z-index: 6; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+  .island::after { content: ""; position: absolute; right: 14px; top: 10px; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle, #2a3a66, #090b14); }
+  .statusbar { display: flex; justify-content: space-between; align-items: center; height: 50px; padding: 14px 30px 0; font: 600 14px/1 system-ui, -apple-system, sans-serif; color: #f2efec; letter-spacing: 0; text-transform: none; flex: none; }
+  #clock { transition: opacity .6s ease; }
+  .sicons { display: flex; align-items: center; gap: 6px; }
+  .sicons svg { width: 17px; height: 11px; fill: #e8e6ea; }
+  .batt { width: 24px; height: 11px; border: 1.5px solid #d4d2d8; border-radius: 4px; position: relative; display: block; }
+  .batt::before { content: ""; position: absolute; inset: 1.5px; width: 68%; background: #d4d2d8; border-radius: 1.5px; }
+  .batt::after { content: ""; position: absolute; right: -4px; top: 2.5px; width: 2px; height: 4px; background: #d4d2d8; border-radius: 0 1px 1px 0; }
+
+  .chathead { flex: none; display: flex; align-items: center; gap: 11px; padding: 8px 16px 11px; border-bottom: 1px solid rgba(255,255,255,.07); background: rgba(22,23,36,.72); }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 600 17px system-ui, sans-serif; color: #fff; background: linear-gradient(135deg, #8f7ae6, #f0b998); box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 4px 14px rgba(143,122,230,.4); }
+  .who2 b { display: block; font: 600 15.5px/1.2 system-ui, -apple-system, sans-serif; color: #fff; letter-spacing: 0; text-transform: none; }
+  .who2 small { display: block; margin-top: 2px; font: 11px/1.2 system-ui, sans-serif; color: #8fd6a5; letter-spacing: 0; text-transform: none; transition: color .4s ease; }
+  .hr { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .hr .ecg { width: 50px; height: 18px; }
+  .closeness { gap: 6px; font: 600 8.5px/1 system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+  .bar { width: 54px; }
+  .progress { flex: none; margin: 0; border-radius: 0; height: 2px; }
+
+  .scroller { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 0; scrollbar-width: none; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(transparent, #000 20px); mask-image: linear-gradient(transparent, #000 20px); }
+  .scroller::-webkit-scrollbar { display: none; }
+  #chat { padding: 6px 0 18px; }
+  .stamp { text-align: center; font: 11px system-ui, sans-serif; color: #7d7f8d; margin: 10px 0 4px; }
+
+  .dock { flex: none; padding: 0 12px 8px; background: linear-gradient(rgba(8,9,16,0), rgba(8,9,16,.92) 18%); }
+  .choices { position: static; display: grid; gap: 8px; padding: 10px 0 4px; background: none; flex: none; }
+  .choices::-webkit-scrollbar { display: none; }
+  .choices:empty { padding: 0; }
+  .choices button { font-size: 13.5px; padding: 10px 14px; border-radius: 18px; }
+  .inputbar { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 2px; padding: 7px 7px 7px 17px; border-radius: 26px; border: 1px solid rgba(255,255,255,.11); background: rgba(255,255,255,.05); font: 14px system-ui, sans-serif; color: #7d7f8d; }
+  .inputbar i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 16px; color: #fff; background: linear-gradient(135deg, #8f7ae6, #6b55c4); box-shadow: 0 0 14px rgba(143,122,230,.5); }
+  .homebar { width: 124px; height: 4.5px; border-radius: 3px; background: rgba(255,255,255,.55); margin: 9px auto 3px; }
+
+  .bub { font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; font-size: 15.5px; line-height: 1.5; padding: 10px 14px; max-width: 84%; background: rgba(46,49,68,.96); }
+  .row.r .bub { background: linear-gradient(135deg, #7d65d9, #5a45ab); border: none; box-shadow: 0 8px 22px rgba(90,69,171,.35); }
+  .bub.x { background: rgba(68,50,56,.96); }
+  .bub.heavy { background: rgba(48,32,44,.96); }
+  .typing { background: rgba(46,49,68,.9); }
+  .chcard { margin: 34px 0 28px; }
+  .chcard h2 { font-size: clamp(24px, 6vw, 31px); }
+  .chcard.settle { margin: 20px 0 16px; }
+  .narr { font-size: 14.5px; line-height: 1.8; margin: 18px 4px; }
+  .endcard { padding: 24px 0 30px; }
+  .endcard h2 { font-size: 28px; }
+
+  @keyframes phoneIn { from { opacity: 0; transform: translateY(40px) scale(.96); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 520px) {
+    .app { padding: 0; height: 100vh; height: 100dvh; }
+    .device { width: 100%; height: 100%; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+    .device::before, .device::after, .island { display: none; }
+    .screen, .screen::after { border-radius: 0; }
+    .statusbar { height: 38px; padding: 10px 22px 0; }
+  }
+
+  /* ---------- scroll back + nav ---------- */
+  .chatwrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .chatwrap .scroller { flex: 1; outline: none; }
+  .chatwrap .navbtn {
+    position: absolute; width: auto; padding: 0; text-align: center; animation: none; z-index: 8;
+    display: grid; place-items: center; opacity: 0; pointer-events: none; transform: translateY(6px);
+    color: #f2efec; background: rgba(36,38,58,.92); border: 1px solid rgba(184,164,255,.35); backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 18px rgba(143,122,230,.25);
+    transition: opacity .35s ease, transform .35s ease, border-color .25s ease, background .25s ease;
+  }
+  .chatwrap .navbtn.show { opacity: 1; pointer-events: auto; transform: none; }
+  .chatwrap .navbtn:hover { transform: translateY(-2px); background: rgba(52,48,84,.96); border-color: rgba(184,164,255,.8); }
+  .navbtn.up { display: none !important; right: 12px; top: 10px; width: 38px; height: 38px; border-radius: 50%; font: 18px/1 system-ui, sans-serif; }
+  .navbtn.latest { left: 50%; bottom: 10px; margin-left: -48px; width: 96px !important; height: 32px; border-radius: 20px; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .02em; }
+  .navbtn.latest.show { animation: latestGlow 2.4s ease-in-out infinite; }
+  @keyframes latestGlow { 0%,100% { box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 8px rgba(143,122,230,.2); } 50% { box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 24px rgba(184,164,255,.6); } }
+  @media (hover: hover) and (pointer: fine) {
+    .navbtn.up { display: grid !important; }
+  }
+</style>
+</head>
+<body data-mood="night">
+
+<div class="sky" id="sky">
+  <i data-m="night" class="on"></i><i data-m="rain"></i><i data-m="heavy"></i><i data-m="warm"></i><i data-m="dawn"></i><i data-m="day"></i>
+</div>
+<div class="sun"></div>
+<canvas id="fx"></canvas>
+<div class="vig" id="vig"></div>
+<div class="glow" id="glow"></div>
+<div class="grain"></div>
+
+<div class="intro" id="intro">
+  <div class="eyebrow">An interactive story</div>
+  <h1>The Last Message</h1>
+  <p class="sub">Sometimes staying is the most important thing you can say.</p>
+  <div class="note">A quiet story about burnout, loneliness, and the friend who shows up. Best read slowly. Tap anywhere to speed up the pacing.</div>
+  <button class="begin" id="begin">Begin</button>
+</div>
+
+<div class="app" id="app">
+  <div class="device"><div class="screen">
+    <div class="island"></div>
+    <div class="statusbar">
+      <span id="clock">11:47 PM</span>
+      <span class="sicons">
+        <svg viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".6"/><rect x="4.7" y="5" width="3" height="6" rx=".6"/><rect x="9.4" y="2.5" width="3" height="8.5" rx=".6"/><rect x="14" y="0" width="3" height="11" rx=".6"/></svg>
+        <i class="batt"></i>
+      </span>
+    </div>
+    <div class="chathead">
+      <div class="avatar">E</div>
+      <div class="who2"><b>Eli</b><small id="presence">active now</small></div>
+      <div class="hr">
+        <svg class="ecg" viewBox="0 0 62 22"><path d="M0 11 H16 L20 4 L26 19 L31 8 L34 11 H62"/></svg>
+        <div class="closeness"><span>closeness</span><div class="bar"><b id="ember"></b></div></div>
+      </div>
+    </div>
+    <div class="progress"><i id="progress"></i></div>
+    <div class="chatwrap">
+      <div class="scroller" id="scroller" tabindex="0" aria-label="Conversation"><main id="chat" role="log" aria-live="polite"></main></div>
+      <button class="navbtn up" id="upBtn" type="button" aria-label="Scroll up to earlier messages" title="Scroll up">↑</button>
+      <button class="navbtn latest" id="latestBtn" type="button" aria-label="Jump to latest message">↓ Latest</button>
+    </div>
+    <div class="dock">
+      <div class="choices" id="choices"></div>
+      <div class="inputbar"><span>Message</span><i>↑</i></div>
+      <div class="homebar"></div>
+    </div>
+  </div></div>
+</div>
+
+<script>
+/* ============================================================
+   STORY DATA
+   ============================================================ */
+const E = (t, o = {}) => ({ k: "msg", w: "e", t, ...o });
+const M = (t) => ({ k: "msg", w: "m", t });
+const X = (name, t, o = {}) => ({ k: "msg", w: "x", name, t, ...o });
+const N = (t) => ({ k: "n", t });
+const CH = (n, t) => ({ k: "ch", n, t });
+const MOOD = (v) => ({ k: "mood", v });
+const TIME = (v) => ({ k: "time", v });
+const P = (ms) => ({ k: "pause", ms });
+const ACHE = { k: "ache" };
+const H = { h: true };
+
+const TOTAL_CHAPTERS = 9;
+
+const beats = [
+  /* ---------- I ---------- */
+  {
+    l: [
+      CH(1, "You awake?"), TIME("11:47 PM"), MOOD("rain"),
+      N("Rain taps the window of Mara's bedroom. The room is dark except for the pale glow of her phone."),
+      N("She is half asleep when the screen lights up."),
+      E("you awake?")
+    ],
+    c: [
+      { t: "Yeah. What's up?", d: 2, r: [E("hey"), E("sorry. I know it's late")] },
+      { t: "Barely lol. Why?", d: 1, r: [E("no reason"), P(900), E("...okay there's kind of a reason")] },
+      { t: "It's almost midnight 😭 what do you want", d: 0, r: [E("oh"), E("sorry. forget it"), N("Three dots appear. Disappear. Appear again."), E("no wait. actually")] }
+    ]
+  },
+  {
+    l: [
+      E("it's nothing really"), E("just couldn't sleep"), P(1200),
+      E("do you ever feel like everyone's moving forward except you?")
+    ],
+    c: [
+      { t: "Yeah. More often than I'd like to admit.", d: 2, r: [E("really?"), E("I thought it was just me"), N("Something in the way Eli types softens. It's the first time tonight he doesn't sound like he's apologizing.")] },
+      { t: "Why are you asking?", d: 1, r: [E("I don't know"), E("it's been a long week. a long year, maybe")] },
+      { t: "You'll catch up eventually.", d: 0, r: [E("yeah"), E("maybe"), N("It's what people say when they want a conversation to be lighter. Eli has heard it a hundred times. Tonight it sounds like a door quietly closing.")] }
+    ]
+  },
+
+  /* ---------- II ---------- */
+  {
+    l: [
+      CH(2, "I'm trying."), TIME("12:09 AM"),
+      E("Mom asked me today when I'm going to get a real job."),
+      E("Dad hasn't said anything in months."),
+      E("I think he's disappointed.")
+    ],
+    c: [
+      { t: "You're not a disappointment.", d: 2, r: [E("you have to say that"), E("you're my friend"), M("I don't have to. I'm saying it because it's true."), P(900), E("...thanks")] },
+      { t: "You should tell your parents how you're feeling.", d: 0, r: [E("yeah. I know"), E("it's not that easy"), E("they'd just worry. or get angry")] },
+      { t: "I know you're trying.", d: 2, r: [E("..."), E("nobody's said that to me in a while"), N("Mara watches the screen. Whatever comes next, she decides she won't look away from it.")] }
+    ]
+  },
+  {
+    l: [
+      E("I wake up tired."), E("I go to sleep tired."), E("and somehow I'm still behind everyone."), P(1000),
+      E("my little brother got accepted into college today."),
+      E("everyone was so happy."), E("I was happy too."), E("I really was."), P(1600),
+      E("I just went to the bathroom afterward and cried for like twenty minutes.", H)
+    ],
+    c: [
+      { t: "I'm sorry.", d: 1, r: [E("don't be"), E("it's not like anyone did anything"), E("that's the weird part")] },
+      { t: "You don't have to compare yourself to him.", d: 1, r: [E("I know that"), E("my brain just doesn't listen")] },
+      { t: "Why didn't you tell me this before?", d: 0, r: [E("because you'd look at me the way you're looking at me right now"), M("I'm not looking at you. You're a text bubble."), E("lol"), E("okay fair"), N("It's the first laugh of the night. Small and cracked, and real.")] }
+    ]
+  },
+
+  /* ---------- III ---------- */
+  {
+    l: [
+      CH(3, "Don't make this weird."), TIME("12:41 AM"),
+      N("Eli sends a photo. A cup of coffee gone cold. Laundry on the floor. An old résumé open on a laptop. A calendar where almost every day is empty."),
+      E("this is basically my life now")
+    ],
+    c: [
+      { t: "Then let's change it. Together.", d: 2, r: [E("lol 'together'"), E("you say that like it's easy"), M("I didn't say easy.")] },
+      { t: "You need to get out more.", d: 0, r: [E("thanks. very helpful"), E("sorry. that came out meaner than I meant"), E("I'm just tired")] },
+      { t: "Can I come over?", d: 2, r: [E("no"), P(700), E("actually"), P(700), E("maybe"), E("but don't make this weird okay"), N("Mara is already pulling a hoodie over her pajamas. She doesn't answer yet. Something tells her to listen first.")] }
+    ]
+  },
+
+  /* ---------- IV ---------- */
+  {
+    l: [
+      CH(4, "The thing I couldn't say"), TIME("1:12 AM"), MOOD("heavy"),
+      N("The typing dots appear. They vanish. They appear again. This goes on for almost two minutes."),
+      E("..."),
+      E("I don't want you to see me like this."), P(1200),
+      E("I think I'm tired of pretending I'm okay.", H),
+      E("not 'bad day' tired."),
+      E("I mean tired of smiling and saying 'I'm fine' while nobody notices it's a lie.", H),
+      N("Mara's thumbs hover over the keyboard. Every instinct says to fix it. To say something wise. To say something clever."),
+      N("Instead she does the harder, plainer thing. She tells the truth.")
+    ],
+    c: [
+      { t: "I noticed. I just didn't know how to ask. I'm sorry I didn't.", d: 2, r: [E("..."), P(1200), E("you noticed?", H), E("okay. that actually means a lot")] },
+      { t: "I'm not going anywhere. Tell me what it's like.", d: 2, r: [E("..."), E("it's like standing in a room full of people with the door locked from the inside", H), E("and I'm the one who locked it")] },
+      { t: "You don't have to be okay with me.", d: 1, r: [E("..."), E("that's the first time anyone's said that"), N("Mara reads his reply once and feels the floor tilt. Then she steadies herself.")] }
+    ]
+  },
+  {
+    l: [
+      E("I've been so scared of being a burden"),
+      E("like if I told anyone how heavy it is, they'd get tired of carrying it with me"),
+      E("so I just kept saying 'I'm good'"),
+      E("for like a year")
+    ],
+    c: [
+      { t: "Thank you for telling me. You're not a burden.", d: 2, r: [E("..."), E("okay"), E("I think I needed someone to say that")] },
+      { t: "Can I come over? You don't have to talk. I'll just sit.", d: 2, r: [E("you'd really do that?"), E("it's 1am")] },
+      { t: "Call me. Right now.", d: 1, r: [N("Her phone is ringing before she finishes typing. Eli picks up on the fourth ring. For a long moment neither of them says anything. She can hear him breathing."), N("It's enough."), E("...hi")] }
+    ]
+  },
+
+  /* ---------- V ---------- */
+  {
+    l: [
+      CH(5, "Stay."), TIME("1:34 AM"),
+      N("Mara is already moving. Shoes. Keys. A jacket over her pajamas."),
+      M("I'm coming over. Stay on the phone with me."),
+      E("you really don't have to"),
+      M("I know."), M("I'm coming anyway."),
+      N("The ride is long and wet and quiet. She keeps the call open the whole way. Sometimes the right thing is just a sound on the other end of the line."),
+      N("The porch light is off. She knocks. Nothing. She knocks again. Finally, the door opens."),
+      MOOD("warm"),
+      N("Eli looks exhausted. Red eyes, a sweatshirt two sizes too big. Neither of them says a word. Mara simply steps inside and sits beside him on the stairs."),
+      E("I don't even know where to start")
+    ],
+    c: [
+      { t: "You don't have to fix it tonight.", d: 2, r: [E("everything feels so big"), E("it feels like if I touch one thing the whole pile falls"), M("Then we don't touch anything. We just sit.")] },
+      { t: "We'll figure it out.", d: 1, r: [E("how do you know that"), M("I don't. But I'm going to be here while we do.")] },
+      { t: "I don't know either. But I'm not going anywhere.", d: 2, r: [E("..."), E("that's weirdly the best thing you could've said")] }
+    ]
+  },
+  {
+    l: [
+      N("Eli talks. About the résumés he never sent. About how the days blur into one long Tuesday. About his dad, and the silence he's been avoiding because he's afraid of what it means."),
+      E("I think I'm scared he's right about me"),
+      E("and scared he's not and I just can't hear it")
+    ],
+    c: [
+      { t: "What if the silence isn't disappointment? What if he doesn't know what to say either?", d: 2, r: [E("..."), E("huh"), E("I never thought about that")] },
+      { t: "That fear is lying to you. Loudly.", d: 1, r: [E("lol"), E("it really is loud")] },
+      { t: "(Say nothing. Slide your hand next to his.)", d: 2, r: [N("Mara says nothing. She sets her hand on the step beside his. After a while, he takes it.")] }
+    ]
+  },
+  {
+    l: [
+      ACHE,
+      N("A floorboard creaks upstairs. Eli's little brother appears on the landing in a rumpled T-shirt, squinting. He looks at Eli's face. At Mara. He doesn't ask. He sits down on the step above them."),
+      X("Noah", "I heard you crying. Tonight. And like, a week ago too."),
+      X("Noah", "I didn't know what to say, so I didn't say anything. I'm sorry."),
+      E("..."),
+      X("Noah", "I got in because you stayed up with me for all four drafts of that essay. At two in the morning."),
+      E("that was nothing"),
+      X("Noah", "It wasn't nothing."),
+      N("Eli puts his face in his hands. His shoulders shake. Noah leans forward and rests his forehead against his brother's back. Nobody says anything for a long time.")
+    ],
+    c: [
+      { t: "Would you let me come with you to see a doctor or a counselor?", d: 2, r: [E("..."), E("yeah"), E("okay"), E("I'm scared"), M("I know. I'll be in the waiting room reading terrible magazines.")] },
+      { t: "Let's tell your mom. Tonight, together.", d: 1, r: [E("tonight?"), M("Or as soon as the sun's up. But soon. You don't have to say it right."), E("okay")] },
+      { t: "Let's sleep first. In the morning, we make a plan.", d: 1, r: [E("okay"), E("you'll still be here?"), M("I'll be on your couch. Drooling.")] }
+    ]
+  },
+
+  /* ---------- VI ---------- */
+  {
+    l: [
+      CH(6, "Morning"), TIME("6:12 AM"), MOOD("dawn"),
+      N("Gray light. The rain has stopped. The smell of coffee. Eli's mother is in the kitchen in her robe, hands wrapped around a mug. She looks up as he appears in the doorway."),
+      E("Mom? Can I tell you something?"),
+      N("It takes four minutes. Eli's voice shakes the whole time. His mother doesn't say a word until he's finished. Then she crosses the kitchen and holds him as if he were five years old."),
+      X("Mom", "Thank you for telling me."),
+      X("Mom", "I'm not going anywhere. And neither is your father. He's been standing in the hallway for ten minutes trying to find the nerve."),
+      N("His dad steps into the light. He opens his mouth. Closes it. Opens it again."),
+      X("Dad", "I should have said this months ago. I'm proud of you. I never stopped."),
+      N("Over his father's shoulder, Eli looks at Mara. Mara looks right back."),
+      P(1500),
+      N("Later, on the porch, the world is washed clean. Two cups of tea. A sky the color of peaches."),
+      E("I thought you'd get tired of me.")
+    ],
+    c: [
+      { t: "I probably will sometimes. That's allowed. I'll still stay.", d: 2, r: [E("...that's the most honest thing anyone's said to me"), E("and somehow it helps more than 'never' would")] },
+      { t: "Never.", d: 1, r: [E("never's a long time"), M("I'm a long-term person."), E("lol")] },
+      { t: "You're stuck with me.", d: 1, r: [E("I'll take it"), N("He leans, just slightly, until his shoulder rests against hers.")] }
+    ]
+  },
+
+  /* ---------- VII ---------- */
+  {
+    l: [
+      CH(7, "Small things"), TIME("Weeks later"), MOOD("warm"),
+      N("Week one. A waiting room with beige walls. Mara reads a three-year-old magazine about boats. Eli comes out after an hour looking wrung out and slightly lighter."),
+      N("Week three. A text: a photo of a clean desk, a window with the curtains open."),
+      E("the window works. who knew"),
+      N("Week five. Eli sends a job application. Then another. A rejection email arrives and he's sad for a day, but it's regular sad. The kind with edges. The kind that ends."),
+      N("Not everything gets better. Some mornings, the old gray settles in. The difference is that now he says so, out loud, to someone."),
+      P(900),
+      E("bad day today. not 'bad' bad. just heavy"),
+      E("can you stay on the phone for a bit?")
+    ],
+    c: [
+      { t: "Always. Tell me about the heaviest part.", d: 2, r: [E("it's quiet today"), E("but it's easier when someone's in the quiet with me")] },
+      { t: "Already dialing.", d: 2, r: [N("The phone rings. He picks up on the first ring this time.")] },
+      { t: "Heavy is okay. I'm bringing snacks.", d: 1, r: [E("what kind of snacks"), M("The kind that make bad days a little less bad."), E("okay. yes. come over")] }
+    ]
+  },
+
+  /* ---------- VIII ---------- */
+  {
+    l: [
+      CH(8, "The last message"), TIME("12:03 AM"), MOOD("night"),
+      N("Another night. Another small rain. Mara's phone buzzes on the nightstand."),
+      E("you awake?")
+    ],
+    c: [
+      { t: "Yeah. What's up?", d: 1, r: [E("nothing bad"), E("I just wanted to say something")] },
+      { t: "Again? 😭", d: 1, r: [E("lol"), E("yes. again. I'll keep doing it"), E("I just wanted to say something")] },
+      { t: "Always.", d: 2, r: [E("..."), E("I know"), E("that's kind of the whole thing, actually")] }
+    ]
+  },
+  {
+    l: [
+      E("thank you for staying"),
+      E("that night. and after."),
+      E("I didn't know a text could do that")
+    ],
+    c: [
+      { t: "You're the one who sent it. That was the brave part.", d: 2, r: [E("..."), E("it didn't feel brave"), M("It never does.")] },
+      { t: "I'm so glad you did.", d: 2, r: [E("me too"), E("weirdly. me too")] }
+    ]
+  }
+];
+
+const MAX_TRUST = beats.reduce((s, b) => s + Math.max(...b.c.map(x => x.d)), 0);
+
+/* ---------- endings ---------- */
+function endingLines(ratio) {
+  const intro = ratio >= 0.65
+    ? [N("One year later, Mara and Eli are sitting on the bench outside the café where he now works part-time, and where he first said out loud: \"I'm struggling.\""),
+       N("Noah is in his first semester and calls home every Sunday. Dinner with his parents isn't perfect, but it's real, and sometimes his dad just rests a hand on his shoulder and leaves it there.")]
+    : ratio >= 0.35
+    ? [N("A year later, nothing is fixed exactly. But the days have edges again. Eli sees someone every other Thursday, and he has a job he's still deciding whether he loves."),
+       N("Noah texts him memes from his dorm. His dad calls on Sundays and sometimes just talks about the weather, which, Eli has learned, is how some people say \"I love you.\"")]
+    : [N("A year later, it has been slower than anyone wanted. Mara said some clumsy things that night, and learned something important: clumsy-but-present beats perfect-but-absent, every time."),
+       N("Eli has therapy on Thursdays, a job he's still figuring out, and a family that learned to speak the hard things a little at a time. A friend who keeps showing up helps too.")];
+  return [
+    CH(9, "One year later"), TIME("A year later"), MOOD("day"),
+    ...intro,
+    N("He still has bad days. Sometimes the gray comes back. But he knows now that it's weather, not a verdict, and that he doesn't have to wait it out alone."),
+    P(1200),
+    N("Today, though, he's laughing. Really laughing."),
+    N("Mara gets up to get them coffee. Her phone buzzes."),
+    E("you awake?"),
+    N("Mara laughs. She turns around. He's right there on the bench, grinning like an idiot."),
+    M("you're literally sitting next to me."),
+    E("yeah"),
+    P(900),
+    E("just wanted to make sure."),
+    P(1200),
+    N("And for a moment the whole sky seems to agree."),
+    P(1800),
+    N("Later, walking home, Mara thinks about how all of it began with three words at a bad hour of the night."),
+    N("She used to believe that helping someone meant having the right answer. Now she knows it mostly means having the right posture: turned toward them, shoes on, door open."),
+    N("Most people aren't waiting to be fixed. They're waiting to be noticed."),
+    P(1200),
+    N("Somewhere tonight, someone is typing a message, deleting it, and typing it again. Someone is saying \"I'm fine\" for the hundredth time and hoping, quietly, that somebody won't believe it."),
+    N("It costs almost nothing to be the person who doesn't.")
+  ];
+}
+
+/* ============================================================
+   ENGINE
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const chat = $("chat"), choicesEl = $("choices"), clockEl = $("clock");
+let trust = 0, fast = false, locked = false, lastWho = "", picked = [], running = false;
+
+// "fast" (tap to speed up) only applies within a beat; "locked" scenes (chapter cards, the ending) always play at full pace.
+const sleep = ms => new Promise(r => setTimeout(r, fast && !locked ? Math.min(ms, 45) : ms));
+const esc = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+
+/* Auto-follow new messages only while the reader is at the bottom; scrolling up pauses it. */
+let stick = true, lastInput = 0;
+const distFromBottom = () => { const sc = $("scroller"); return sc.scrollHeight - sc.scrollTop - sc.clientHeight; };
+function updateNav() {
+  const sc = $("scroller");
+  $("upBtn").classList.toggle("show", sc.scrollTop > 140);
+  $("latestBtn").classList.toggle("show", !stick && distFromBottom() > 140);
+}
+function scrollEnd(force) {
+  const sc = $("scroller");
+  if (force === true) stick = true;
+  if (!stick) { updateNav(); return; }
+  setTimeout(() => sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" }), 30);
+}
+(function initScroll() {
+  const sc = $("scroller");
+  ["wheel", "touchstart", "touchmove", "mousedown", "pointerdown"].forEach(ev => sc.addEventListener(ev, () => { lastInput = performance.now(); }, { passive: true }));
+  document.addEventListener("keydown", e => { if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(e.key)) lastInput = performance.now(); });
+  sc.addEventListener("scroll", () => {
+    const near = distFromBottom() < 60;
+    if (performance.now() - lastInput < 900) stick = near;   // the reader is steering
+    else if (near) stick = true;                               // our own smooth scroll arrived
+    updateNav();
+  }, { passive: true });
+  $("upBtn").onclick = () => { lastInput = performance.now(); stick = false; sc.scrollBy({ top: -sc.clientHeight * 0.8, behavior: "smooth" }); };
+  $("latestBtn").onclick = () => { stick = true; sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" }); updateNav(); };
+})();
+function addEl(cls, html) { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; chat.appendChild(d); scrollEnd(); return d; }
+
+/* ---------- mood ---------- */
+const BEATS_PER_MOOD = { night: 1.7, rain: 1.8, heavy: 2.9, warm: 1.25, dawn: 1.1, day: 1.0 };
+function setMood(m) {
+  document.body.dataset.mood = m;
+  document.querySelectorAll(".sky i").forEach(i => i.classList.toggle("on", i.dataset.m === m));
+  document.documentElement.style.setProperty("--beat", BEATS_PER_MOOD[m] + "s");
+  Object.assign(target, MOODS[m]);
+}
+function setTime(t) {
+  clockEl.style.opacity = 0;
+  setTimeout(() => { clockEl.textContent = t; clockEl.style.opacity = 1; }, 500);
+}
+function ache() { const v = $("vig"); v.classList.remove("on"); void v.offsetWidth; v.classList.add("on"); }
+function warmGlow() { const g = $("glow"); g.classList.remove("on"); void g.offsetWidth; g.classList.add("on"); }
+
+/* ---------- line playback ---------- */
+async function play(lines) { for (const l of lines) await line(l); }
+
+async function line(l) {
+  switch (l.k) {
+    case "ch": return chapter(l);
+    case "mood": return setMood(l.v);
+    case "time": return setTime(l.v);
+    case "pause": return sleep(l.ms);
+    case "ache": ache(); return sleep(1600);
+    case "n": lastWho = ""; addEl("narr", esc(l.t)); return sleep(800 + l.t.length * 24);
+    case "msg": return message(l);
+  }
+}
+
+async function chapter(l) {
+  lastWho = "";
+  $("progress").style.width = ((l.n - 1) / TOTAL_CHAPTERS * 100) + "%";
+  const d = addEl("chcard", `<div class="num">Chapter ${ROMAN[l.n]}</div><h2>${esc(l.t)}</h2>`);
+  const was = locked; locked = true;
+  await sleep(2600);
+  locked = was;
+  d.classList.add("settle");
+}
+
+function bubbleHTML(l, label, side) {
+  const cls = (l.w === "x" ? "x " : "") + (l.h ? "heavy" : "");
+  const body = l.h
+    ? l.t.split(" ").map((w, i) => `<span class="w" style="animation-delay:${i * 0.24}s">${esc(w)}</span>`).join(" ")
+    : esc(l.t).replace(/\n/g, "<br>");
+  return `${label ? `<span class="who">${esc(label)}</span>` : ""}<div class="bub ${cls}">${body}</div>`;
+}
+
+async function message(l) {
+  const side = l.w === "m" ? "r" : "l";
+  const ty = addEl("typing " + side, "<i></i><i></i><i></i>");
+  if (side === "l") $("presence").textContent = "typing…";
+  await sleep(Math.min(450 + l.t.length * 30, l.h ? 2600 : 1700));
+  ty.remove(); $("presence").textContent = "active now";
+  const key = l.w === "x" ? l.name : l.w;
+  const label = key !== lastWho ? (l.w === "e" ? "Eli" : l.w === "m" ? "Mara" : l.name) : "";
+  lastWho = key;
+  addEl("row " + side, bubbleHTML(l, label, side));
+  if (l.h) { ache(); await sleep(l.t.split(" ").length * 240 + 900); }
+  else await sleep(320 + Math.min(l.t.length * 8, 500));
+}
+
+/* ---------- choices ---------- */
+function ask(options) {
+  fast = false;
+  return new Promise(resolve => {
+    choicesEl.classList.remove("out");
+    choicesEl.innerHTML = "";
+    options.forEach((o, i) => {
+      const b = document.createElement("button");
+      b.style.animationDelay = (i * 0.12) + "s";
+      b.innerHTML = `<span class="n">${i + 1}</span>${esc(o.t)}`;
+      b.onclick = (ev) => pick(b, o, ev, resolve);
+      choicesEl.appendChild(b);
+    });
+    scrollEnd();
+  });
+}
+
+function pick(btn, o, ev, resolve) {
+  if (choicesEl.dataset.busy) return;
+  choicesEl.dataset.busy = "1";
+  const rect = btn.getBoundingClientRect();
+  const rp = document.createElement("span");
+  rp.className = "ripple";
+  rp.style.left = (ev && ev.clientX ? ev.clientX - rect.left : rect.width / 2) + "px";
+  rp.style.top = (ev && ev.clientY ? ev.clientY - rect.top : rect.height / 2) + "px";
+  btn.appendChild(rp);
+  btn.classList.add("picked");
+  if (o.d > 0) {
+    warmGlow();
+    for (let i = 0; i < o.d + 1; i++) {
+      const h = document.createElement("div");
+      h.className = "float"; h.textContent = i % 2 ? "♡" : "✦";
+      h.style.left = (rect.left + rect.width * (.25 + Math.random() * .5)) + "px";
+      h.style.top = (rect.top + 6) + "px";
+      h.style.animationDelay = (i * .25) + "s";
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 3200);
+    }
+  }
+  setTimeout(() => {
+    choicesEl.classList.add("out");
+    setTimeout(() => {
+      choicesEl.innerHTML = ""; delete choicesEl.dataset.busy;
+      const label = lastWho !== "m" ? "Mara" : "";
+      lastWho = "m";
+      stick = true;
+      addEl("row r", bubbleHTML({ w: "m", t: o.t }, label, "r"));
+      picked.push(o.t);
+      trust += o.d;
+      $("ember").style.width = Math.max(6, Math.min(100, trust / MAX_TRUST * 100)) + "%";
+      resolve(o);
+    }, 450);
+  }, 650);
+}
+
+document.addEventListener("keydown", e => {
+  const n = parseInt(e.key, 10);
+  const btns = choicesEl.querySelectorAll("button");
+  if (n >= 1 && n <= btns.length && !choicesEl.dataset.busy) btns[n - 1].click();
+});
+document.addEventListener("click", e => { if (!e.target.closest("button")) fast = true; });
+
+/* ---------- main flow ---------- */
+async function run() {
+  if (running) return; running = true;
+  trust = 0; picked = []; lastWho = ""; chat.innerHTML = '<div class="stamp">Today</div>';
+  $("ember").style.width = "6%"; $("progress").style.width = "0%";
+  setMood("night"); setTime("11:47 PM");
+  await sleep(1200);
+  locked = false;
+  for (const b of beats) {
+    fast = false;                       // every beat starts at a readable pace
+    await play(b.l);
+    const o = await ask(b.c);
+    await play(o.r);
+    await sleep(500);
+  }
+  fast = false; locked = true;          // the ending always plays at full pace, even after a tap
+  await sleep(600);
+  await play(endingLines(trust / MAX_TRUST));
+  $("progress").style.width = "100%";
+  await sleep(1800);
+  locked = false;
+  showEnding();
+  running = false;
+}
+
+function showEnding() {
+  const items = picked.map((t, i) => `<li style="animation-delay:${1.2 + i * 0.18}s">${esc(t)}</li>`).join("");
+  addEl("endcard", `
+    <div class="heart">♡</div>
+    <h2>I'm glad I stayed too.</h2>
+    <div class="the-end">The End</div>
+    <div class="recap"><h3>The words you chose</h3><ul>${items}</ul></div>
+    <div class="care">Somewhere tonight, someone is staring at a screen, typing and deleting the same three words. <b>Be the one who answers.</b><br><br>And if you are the one carrying something heavy, say it out loud to someone. It weighs less shared than you think.</div>
+    <button class="restart" id="again">Play again</button>`);
+  $("again").onclick = () => { stick = true; $("scroller").scrollTop = 0; run(); };
+}
+
+$("begin").onclick = () => {
+  $("intro").classList.add("gone");
+  $("app").classList.add("on");
+  run();
+};
+
+/* ============================================================
+   PARTICLES: stars, rain, fireflies / dawn motes
+   ============================================================ */
+const MOODS = {
+  night: { stars: 1,   rain: 0,   flies: 0,   },
+  rain:  { stars: .3,  rain: .55, flies: 0,   },
+  heavy: { stars: .08, rain: 1,   flies: 0,   },
+  warm:  { stars: .5,  rain: .08, flies: .9,  },
+  dawn:  { stars: .1,  rain: 0,   flies: .8,  },
+  day:   { stars: 0,   rain: 0,   flies: .55, }
+};
+const target = { ...MOODS.night }, cur = { ...MOODS.night };
+const cv = $("fx"), cx = cv.getContext("2d");
+let VW, VH;
+function size() { const d = Math.min(devicePixelRatio || 1, 2); VW = innerWidth; VH = innerHeight; cv.width = VW * d; cv.height = VH * d; cx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener("resize", size); size();
+
+const stars = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random() * .8, r: Math.random() * 1.3 + .3, p: Math.random() * 6.28, s: Math.random() * 1.6 + .5 }));
+const drops = Array.from({ length: 180 }, () => ({ x: Math.random(), y: Math.random(), l: Math.random() * 14 + 8, v: Math.random() * .5 + .7 }));
+const flies = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), p: Math.random() * 6.28, s: Math.random() * .00006 + .00002, r: Math.random() * 2.2 + 1 }));
+
+let last = performance.now();
+function frame(t) {
+  const dt = Math.min(t - last, 50); last = t;
+  for (const k in cur) cur[k] += (target[k] - cur[k]) * 0.012;
+  cx.clearRect(0, 0, VW, VH);
+
+  if (cur.stars > .01) {
+    for (const s of stars) {
+      const a = (0.35 + 0.65 * Math.abs(Math.sin(t * .001 * s.s + s.p))) * cur.stars;
+      cx.fillStyle = `rgba(230,225,255,${a})`;
+      cx.beginPath(); cx.arc(s.x * VW, s.y * VH, s.r, 0, 6.283); cx.fill();
+    }
+  }
+  if (cur.rain > .01) {
+    cx.strokeStyle = `rgba(170,190,235,${.3 * cur.rain})`; cx.lineWidth = 1; cx.beginPath();
+    for (const d of drops) {
+      d.y += d.v * dt * .0011 * (.7 + cur.rain * .6);
+      d.x -= dt * .00005;
+      if (d.y > 1.05) { d.y = -.05; d.x = Math.random() * 1.1; }
+      if (d.x < -.05) d.x = 1.05;
+      const x = d.x * VW, y = d.y * VH;
+      cx.moveTo(x, y); cx.lineTo(x - 2, y + d.l * (.6 + cur.rain * .6));
+    }
+    cx.stroke();
+  }
+  if (cur.flies > .01) {
+    for (const f of flies) {
+      f.y -= f.s * dt; if (f.y < -.05) { f.y = 1.05; f.x = Math.random(); }
+      const x = (f.x + Math.sin(t * .0003 + f.p) * .03) * VW, y = f.y * VH;
+      const a = (.25 + .75 * Math.abs(Math.sin(t * .0012 + f.p))) * cur.flies;
+      const g = cx.createRadialGradient(x, y, 0, x, y, f.r * 7);
+      g.addColorStop(0, `rgba(255,210,150,${a})`); g.addColorStop(1, "rgba(255,200,140,0)");
+      cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, f.r * 7, 0, 6.283); cx.fill();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
