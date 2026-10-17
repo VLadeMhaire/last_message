@@ -3,851 +3,994 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Last Message</title>
+<title>The Group Chat</title>
 <style>
-  :root {
-    --text: #f2efec;
-    --muted: #9b9dab;
-    --accent: #b8a4ff;
-    --accent2: #8f7ae6;
-    --warm: #f0b998;
-    --beat: 1.6s;
-  }
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0; min-height: 100vh; background: #07080f; color: var(--text);
-    font-family: Georgia, "Times New Roman", serif; overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
+:root {
+  --blood: #c1121f; --blood2: #ff2d3d; --bone: #e9e4da; --muted: #8b858d;
+  --ui: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "SF Mono", "Cascadia Mono", Consolas, "Courier New", monospace;
+  --serif: Georgia, "Times New Roman", serif;
+  --pulse: 4s;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #030203; color: var(--bone); font-family: var(--ui); overflow: hidden; -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; }
 
-  /* ---------- atmosphere layers ---------- */
-  .sky, .sky i { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-  .sky i { opacity: 0; transition: opacity 5s ease; }
-  .sky i.on { opacity: 1; }
-  .sky i[data-m="night"] { background: linear-gradient(#06070e, #0f1223 60%, #171a31); }
-  .sky i[data-m="rain"]  { background: linear-gradient(#070a12, #101a2b 60%, #1a2536); }
-  .sky i[data-m="heavy"] { background: linear-gradient(#040408, #0a0a13 60%, #130f1b); }
-  .sky i[data-m="warm"]  { background: linear-gradient(#120f19, #2a1c2a 60%, #3d2a2f); }
-  .sky i[data-m="dawn"]  { background: linear-gradient(#1c1f36, #4a4064 45%, #a8737f 80%, #dfa186); }
-  .sky i[data-m="day"]   { background: linear-gradient(#2b3b5e, #7e9fc9 55%, #f2d9b6); }
-  .sun {
-    position: fixed; left: 50%; bottom: -30vh; width: 110vmax; height: 110vmax; z-index: 0; pointer-events: none;
-    transform: translateX(-50%) translateY(55%);
-    background: radial-gradient(circle, rgba(255,205,150,.55), rgba(255,170,120,.12) 40%, transparent 62%);
-    opacity: 0; transition: transform 10s ease, opacity 6s ease;
-  }
-  body[data-mood="warm"] .sun { opacity: .18; transform: translateX(-50%) translateY(48%); }
-  body[data-mood="dawn"] .sun { opacity: .6; transform: translateX(-50%) translateY(30%); }
-  body[data-mood="day"]  .sun { opacity: .9; transform: translateX(-50%) translateY(8%); }
-  #fx { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
-  .vig {
-    position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
-    background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,.78) 100%);
-  }
-  .vig.on { animation: ache 3.4s ease both; }
-  body[data-mood="heavy"] .vig:not(.on) { animation: breathe 6s ease-in-out infinite; }
-  .glow {
-    position: fixed; left: 0; right: 0; bottom: 0; height: 55vh; z-index: 2; pointer-events: none; opacity: 0;
-    background: radial-gradient(ellipse at 50% 100%, rgba(255,190,140,.35), transparent 65%);
-  }
-  .glow.on { animation: glow 2.4s ease both; }
-  .grain {
-    position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
-  }
+/* ---------- atmosphere ---------- */
+.fog, .vig, .grain, .flick { position: fixed; inset: 0; pointer-events: none; }
+.fog { z-index: 0; background:
+  radial-gradient(60vmax 40vmax at 20% 80%, rgba(120,10,20,.22), transparent 70%),
+  radial-gradient(50vmax 35vmax at 85% 20%, rgba(40,50,70,.22), transparent 70%),
+  #030203; animation: drift 28s ease-in-out infinite alternate; transition: filter 3s ease; }
+body[data-mood="panic"] .fog { filter: hue-rotate(-12deg) saturate(1.8) brightness(1.3); }
+body[data-mood="dawn"] .fog { background: radial-gradient(70vmax 50vmax at 50% 90%, rgba(150,160,175,.45), transparent 70%), #0b0d12; }
+@keyframes drift { from { transform: scale(1) translateX(0); } to { transform: scale(1.12) translateX(-2%); } }
+.vig { z-index: 2; background: radial-gradient(ellipse at center, transparent 35%, rgba(60,0,6,.75) 100%); animation: vp var(--pulse) ease-in-out infinite; }
+body[data-mood="panic"] .vig { --pulse: 1.1s; background: radial-gradient(ellipse at center, transparent 22%, rgba(130,0,10,.85) 100%); }
+body[data-mood="still"] .vig { --pulse: 1.9s; }
+body[data-mood="dawn"] .vig { background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.6) 100%); animation: none; opacity: .6; }
+@keyframes vp { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+.grain { z-index: 3; opacity: .09; mix-blend-mode: overlay; animation: gr .6s steps(4) infinite;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>"); }
+@keyframes gr { 0% { background-position: 0 0; } 25% { background-position: -40px 30px; } 50% { background-position: 30px -50px; } 75% { background-position: -20px -20px; } 100% { background-position: 50px 40px; } }
+.flick { z-index: 4; background: #000; opacity: 0; }
+.flick.go { animation: flick 1.2s steps(1) both; }
+@keyframes flick { 0% { opacity: 0; } 10% { opacity: .9; } 18% { opacity: 0; } 30% { opacity: .75; } 36% { opacity: 0; } 55% { opacity: .95; } 60% { opacity: .1; } 78% { opacity: .85; } 100% { opacity: 0; } }
 
-  /* ---------- intro ---------- */
-  .intro {
-    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 30px; transition: opacity 1.4s ease, visibility 1.4s;
-  }
-  .intro.gone { opacity: 0; visibility: hidden; }
-  .eyebrow { color: var(--accent); font: 600 11px/1.4 system-ui, sans-serif; letter-spacing: .28em; text-transform: uppercase; margin-bottom: 14px; animation: fadeDown 1.4s ease both; }
-  .intro h1 { margin: 0; font-weight: 400; font-size: clamp(42px, 10vw, 84px); letter-spacing: -.04em; animation: titleIn 2.4s .3s ease both; }
-  .intro .sub { color: var(--muted); font: 15px/1.7 system-ui, sans-serif; margin: 16px 0 0; max-width: 430px; animation: fadeUp 1.6s 1.2s ease both; }
-  .intro .note { color: #7d7f8d; font: 12.5px/1.65 system-ui, sans-serif; max-width: 420px; margin: 34px 0 26px; padding: 14px 18px; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: rgba(255,255,255,.025); animation: fadeUp 1.6s 2s ease both; }
-  .begin { width: auto; display: inline-block; text-align: center; padding: 13px 34px; border-radius: 40px; animation: fadeUp 1.6s 2.6s ease both; }
+/* ---------- intro ---------- */
+.intro { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; overflow-y: auto; transition: opacity 1.6s ease, visibility 1.6s; background: radial-gradient(ellipse at 50% 30%, rgba(90,5,12,.35), #030203 70%); }
+.intro.gone { opacity: 0; visibility: hidden; }
+.eyebrow { color: var(--blood2); font: 600 11px/1.4 var(--mono); letter-spacing: .34em; text-transform: uppercase; animation: fadeDown 2s ease both; }
+.intro h1 { margin: 16px 0 6px; font: 400 clamp(44px, 11vw, 96px)/.95 var(--serif); letter-spacing: -.03em; color: #f6efe6; text-shadow: 0 0 40px rgba(193,18,31,.7), 0 0 4px rgba(255,255,255,.4); animation: titleIn 3s .3s ease both, tflick 7s 3.5s infinite; position: relative; }
+.intro h1 b { color: var(--blood2); font-weight: 400; text-shadow: 0 0 30px var(--blood2); }
+@keyframes titleIn { from { opacity: 0; filter: blur(16px); letter-spacing: .2em; } to { opacity: 1; filter: blur(0); letter-spacing: -.03em; } }
+@keyframes tflick { 0%,93%,100% { opacity: 1; } 94% { opacity: .2; } 95% { opacity: 1; } 96% { opacity: .35; transform: translateX(3px); } 97% { opacity: 1; transform: none; } }
+.intro .sub { color: var(--muted); font: italic 16px/1.6 var(--serif); margin: 0 0 22px; animation: fadeUp 2s 1.4s ease both; }
+.facts { display: grid; grid-template-columns: repeat(3, auto); gap: 6px 26px; margin: 0 0 22px; font: 11px/1.5 var(--mono); color: #9b929a; letter-spacing: .08em; text-transform: uppercase; animation: fadeUp 2s 2s ease both; }
+.facts b { display: block; color: var(--blood2); font-size: 15px; letter-spacing: .02em; }
+.warn { max-width: 430px; color: #a7a0a7; font: 12.5px/1.65 var(--ui); padding: 14px 18px; border: 1px solid rgba(193,18,31,.35); border-radius: 12px; background: rgba(193,18,31,.07); margin-bottom: 18px; animation: fadeUp 2s 2.4s ease both; }
+.warn strong { color: #ffb3b8; }
+.opts { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font: 13px var(--ui); color: #b8b0b8; margin-bottom: 24px; animation: fadeUp 2s 2.8s ease both; }
+.opts label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.opts input { accent-color: #c1121f; width: 16px; height: 16px; }
+.begin { padding: 14px 44px; border-radius: 40px; background: linear-gradient(#5a0a12, #2a0409); border: 1px solid rgba(255,45,61,.6); color: #ffd9dc; font: 600 14px var(--ui); letter-spacing: .24em; text-transform: uppercase; cursor: pointer; box-shadow: 0 0 30px rgba(193,18,31,.35); animation: fadeUp 2s 3.2s ease both, beginPulse 2.4s 5s ease-in-out infinite; }
+.begin:hover { background: linear-gradient(#7a0f19, #3a050c); }
+@keyframes beginPulse { 0%,100% { box-shadow: 0 0 20px rgba(193,18,31,.3); } 50% { box-shadow: 0 0 46px rgba(255,45,61,.7); } }
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 
-  /* ---------- app ---------- */
-  .app.on { opacity: 1; }
-  .ecg { width: 62px; height: 22px; overflow: visible; }
-  .ecg path { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 90; stroke-dashoffset: 90; animation: ecg var(--beat) linear infinite; filter: drop-shadow(0 0 4px var(--accent)); }
-  .closeness { display: flex; align-items: center; gap: 8px; }
-  .bar { width: 64px; height: 3px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
-  .bar b { display: block; height: 100%; width: 6%; border-radius: 4px; background: linear-gradient(90deg, var(--accent2), var(--warm)); box-shadow: 0 0 10px var(--warm); transition: width 1.4s ease; }
-  .progress { height: 2px; background: rgba(255,255,255,.06); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
-  .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent2), var(--warm)); transition: width 1.4s ease; }
+/* ---------- phone ---------- */
+.app { position: relative; z-index: 5; width: 100%; height: 100vh; height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 14px; opacity: 0; transition: opacity 2s ease; }
+.app.on { opacity: 1; }
+.device { position: relative; width: min(410px, 100%); height: min(880px, calc(100dvh - 28px)); padding: 11px; border-radius: 56px; background: linear-gradient(145deg, #2c2528, #0d0b0c 55%, #1d1719);
+  box-shadow: 0 0 0 1.5px #3a2c30, 0 0 0 5px rgba(0,0,0,.4), 0 50px 100px rgba(0,0,0,.8), 0 0 120px rgba(193,18,31,.28), inset 0 0 6px rgba(255,255,255,.1); animation: phoneIn 2s cubic-bezier(.2,.8,.2,1) both; }
+.device::before { content: ""; position: absolute; left: -4px; top: 150px; width: 4px; height: 52px; border-radius: 3px 0 0 3px; background: #2c2528; box-shadow: 0 70px 0 #2c2528; }
+.device::after { content: ""; position: absolute; right: -4px; top: 210px; width: 4px; height: 84px; border-radius: 0 3px 3px 0; background: #2c2528; }
+@keyframes phoneIn { from { opacity: 0; transform: translateY(40px) scale(.96); } to { opacity: 1; transform: none; } }
+.screen { position: relative; height: 100%; border-radius: 45px; overflow: hidden; display: flex; flex-direction: column; background: #0a0709; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 30; border-radius: 45px; background: linear-gradient(120deg, rgba(255,255,255,.05), transparent 28%); }
+.island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 108px; height: 30px; border-radius: 20px; background: #000; z-index: 20; }
+.island::after { content: ""; position: absolute; right: 14px; top: 10px; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle, #3a1a22, #090b14); }
+.statusbar { flex: none; display: flex; justify-content: space-between; align-items: center; height: 50px; padding: 14px 30px 0; font: 600 14px/1 var(--ui); color: #f2efec; }
+.sicons { display: flex; align-items: center; gap: 6px; }
+.sicons svg { width: 17px; height: 11px; fill: #e8e6ea; }
+.batt { width: 24px; height: 11px; border: 1.5px solid #d4d2d8; border-radius: 4px; position: relative; display: block; }
+.batt::before { content: ""; position: absolute; inset: 1.5px; width: 22%; background: #ff3b4a; border-radius: 1.5px; }
+.batt::after { content: ""; position: absolute; right: -4px; top: 2.5px; width: 2px; height: 4px; background: #d4d2d8; border-radius: 0 1px 1px 0; }
 
+.chathead { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px 11px; border-bottom: 1px solid rgba(193,18,31,.25); background: rgba(24,14,18,.85); position: relative; z-index: 5; }
+.avs { display: flex; flex: none; }
+.av { width: 30px; height: 30px; border-radius: 50%; margin-left: -9px; display: grid; place-items: center; font: 700 12px var(--ui); color: #fff; border: 2px solid #190d11; background-size: cover; background-position: center; transition: opacity .6s, transform .6s; }
+.av:first-child { margin-left: 0; }
+.av.out { opacity: .15; transform: scale(.6); }
+.who2 { min-width: 0; }
+.who2 b { display: block; font: 700 15px/1.2 var(--ui); color: #fff; letter-spacing: .04em; white-space: nowrap; }
+.who2 small { display: block; margin-top: 2px; font: 11px/1.2 var(--ui); color: #9a8f97; transition: color .3s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who2 small.typ { color: #ff7a85; }
+.who2 small.bump { animation: bump .7s ease; }
+@keyframes bump { 0% { transform: scale(1); color: #ff2d3d; } 40% { transform: scale(1.25); color: #ff2d3d; } 100% { transform: scale(1); } }
+.hbtns { margin-left: auto; display: flex; gap: 7px; align-items: center; }
+.hbtn { white-space: nowrap; width: auto; padding: 5px 9px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: #d8d0d6; font: 600 10px/1 var(--mono); letter-spacing: .1em; cursor: pointer; }
+.hbtn:hover { border-color: var(--blood2); color: #fff; }
+.hbtn.hide { display: none; }
+.pulse-line { height: 2px; flex: none; background: rgba(255,255,255,.05); overflow: hidden; }
+.pulse-line i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5a0a12, #ff2d3d); transition: width 1.6s ease; box-shadow: 0 0 10px #ff2d3d; }
 
-  .chcard { text-align: center; margin: 70px 0 56px; animation: chIn 2.2s ease both; transition: margin .8s ease, opacity .8s ease; }
-  .chcard .num { color: var(--accent); font: 600 11px/1 system-ui, sans-serif; letter-spacing: .4em; text-transform: uppercase; margin-bottom: 14px; }
-  .chcard h2 { margin: 0; font-weight: 400; font-size: clamp(28px, 6vw, 44px); letter-spacing: -.02em; text-shadow: 0 0 30px rgba(184,164,255,.35); }
-  .chcard.settle { opacity: .45; margin: 40px 0 34px; }
+.chatwrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; background: linear-gradient(rgba(10,7,9,.0), rgba(10,7,9,.0)); }
+.scroller { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 0; scrollbar-width: none; overscroll-behavior: contain; outline: none; -webkit-mask-image: linear-gradient(transparent, #000 20px); mask-image: linear-gradient(transparent, #000 20px); }
+.scroller::-webkit-scrollbar { display: none; }
+#chat { padding: 6px 0 18px; }
 
-  .narr { color: #c9c8d2; font-style: italic; line-height: 1.95; margin: 26px 4px; text-shadow: 0 1px 14px rgba(0,0,0,.6); animation: narrIn 1.8s ease both; }
+.row { display: flex; flex-direction: column; align-items: flex-start; margin: 4px 0; animation: bubIn .35s cubic-bezier(.2,.9,.3,1.2) both; }
+.row.r { align-items: flex-end; }
+.who { font: 700 10px/1 var(--ui); letter-spacing: .12em; text-transform: uppercase; margin: 12px 8px 5px; }
+.bub { max-width: 84%; padding: 10px 14px; border-radius: 19px 19px 19px 5px; background: #1c171b; border: 1px solid rgba(255,255,255,.05); font-size: 15.5px; line-height: 1.5; box-shadow: 0 8px 22px rgba(0,0,0,.35); word-wrap: break-word; }
+.row.r .bub { border-radius: 19px 19px 5px 19px; background: linear-gradient(135deg, #7a1424, #4a0a14); border-color: rgba(255,80,100,.2); }
+.bub.unknown { background: #070102; color: #ff4a5a; border: 1px solid rgba(255,40,60,.55); text-shadow: 0 0 10px rgba(255,0,30,.7); animation: ujit 3s steps(1) infinite; }
+.bub.you.mirror { background: #120609; border: 1px dashed rgba(255,80,100,.6); color: #ffc2c8; animation: ujit 2.4s steps(1) infinite; }
+@keyframes ujit { 0%,90%,100% { transform: none; } 92% { transform: translateX(-2px) skewX(-3deg); } 95% { transform: translateX(2px); } }
+.bub.big { font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #ffdfe2; background: #3a0a12; border-color: rgba(255,45,61,.6); animation: shk .18s linear infinite; }
+@keyframes shk { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-2px,1px); } 50% { transform: translate(2px,-1px); } 75% { transform: translate(-1px,-2px); } }
+.bub.deleted { color: #6a626a; font-style: italic; background: transparent; border: 1px dashed rgba(255,255,255,.15); box-shadow: none; }
+.bub img, .bub canvas { display: block; width: 100%; max-width: 300px; border-radius: 12px; }
+.bub.photo { padding: 5px; background: #111; animation: photoIn .8s ease both; }
+@keyframes photoIn { 0% { opacity: 0; filter: brightness(4) blur(6px); } 40% { opacity: 1; filter: brightness(2); } 100% { filter: none; } }
+.bub.vid { padding: 5px; background: #0a0a0a; position: relative; }
+.bub.vid .play { position: absolute; inset: 5px; display: grid; place-items: center; background: rgba(0,0,0,.5); border-radius: 12px; cursor: pointer; border: 0; width: auto; color: #fff; font-size: 34px; }
+.bub.vid .play span { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; background: rgba(193,18,31,.85); box-shadow: 0 0 30px rgba(255,45,61,.6); }
+.typing { display: inline-flex; gap: 5px; padding: 13px 16px; margin: 5px 0; border-radius: 19px; background: #1c171b; animation: bubIn .25s ease both; }
+.typing.un { background: #12040a; box-shadow: 0 0 14px rgba(255,0,30,.3); }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: #9a8f97; animation: bounce 1.1s infinite; }
+.typing.un i { background: #ff2d3d; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+@keyframes bubIn { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
 
-  .row { display: flex; flex-direction: column; align-items: flex-start; margin: 5px 0; }
-  .row.r { align-items: flex-end; }
-  .who { color: var(--muted); font: 600 10px/1 system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; margin: 14px 8px 6px; }
-  .bub {
-    max-width: 82%; padding: 12px 17px; border-radius: 19px 19px 19px 5px; background: rgba(34,37,52,.88);
-    border: 1px solid rgba(255,255,255,.05); line-height: 1.6; font-size: 17px; box-shadow: 0 10px 30px rgba(0,0,0,.18);
-    animation: bubIn .5s cubic-bezier(.2,.9,.3,1.2) both; backdrop-filter: blur(4px);
-  }
-  .row.r .bub { border-radius: 19px 19px 5px 19px; background: rgba(66,52,100,.82); border-color: rgba(184,164,255,.16); }
-  .bub.x { background: rgba(52,40,44,.86); border-color: rgba(240,185,152,.14); }
-  .bub.heavy {
-    background: rgba(40,28,38,.92); border-color: rgba(240,185,152,.3);
-    box-shadow: 0 0 40px rgba(240,185,152,.12), 0 14px 40px rgba(0,0,0,.3);
-    animation: bubIn .8s ease both, heavyPulse 4s ease-in-out infinite;
-  }
-  .bub .w { display: inline-block; opacity: 0; filter: blur(7px); animation: wordIn 1s ease both; }
+.narr { color: #b3acb3; font: italic 14.5px/1.8 var(--serif); margin: 16px 4px; text-shadow: 0 1px 12px #000; animation: narrIn 1.4s ease both; }
+.narr.red { color: #ff7a85; }
+@keyframes narrIn { from { opacity: 0; filter: blur(5px); transform: translateY(6px); } to { opacity: .95; filter: none; transform: none; } }
+.evt { text-align: center; color: #8b858d; font: italic 12px/1.5 var(--ui); margin: 14px 0; animation: narrIn 1s ease both; }
+.evt.red { color: #ff5a68; font-style: normal; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.sys { margin: 12px 0; padding: 11px 14px; border: 1px solid rgba(255,45,61,.7); border-left-width: 4px; border-radius: 6px; background: rgba(193,18,31,.1); color: #ff6b77; font: 700 13px/1.55 var(--mono); letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 0 10px rgba(255,0,30,.5); animation: sysIn .7s steps(8) both; }
+.sys small { display: block; color: #ff9aa2; font-size: 10px; letter-spacing: .24em; margin-bottom: 4px; opacity: .8; }
+.sys.huge { font-size: 17px; text-align: center; padding: 16px; }
+@keyframes sysIn { 0% { opacity: 0; transform: translateX(-8px) skewX(6deg); clip-path: inset(0 60% 0 0); } 40% { opacity: 1; transform: translateX(5px); clip-path: inset(0 10% 0 0); } 100% { opacity: 1; transform: none; clip-path: inset(0); } }
+.profile { margin: 10px 4px; padding: 16px; text-align: center; border-radius: 16px; background: #120d10; border: 1px solid rgba(255,255,255,.08); animation: bubIn .5s ease both; }
+.profile .pic { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 10px; background: #000; border: 2px solid #2a2227; display: grid; place-items: center; color: #3a3238; font-size: 28px; }
+.profile b { font-size: 16px; }
+.profile div { color: #8b858d; font-size: 12.5px; line-height: 1.7; }
+.profile .seen { color: #ff5a68; font-weight: 700; margin-top: 4px; }
+.memberlist { margin: 10px 4px; padding: 12px 16px; border-radius: 14px; background: #120d10; border: 1px solid rgba(255,255,255,.06); font: 600 14px/1.9 var(--ui); animation: bubIn .5s ease both; }
+.memberlist .u { color: #ff3b4a; text-shadow: 0 0 10px rgba(255,0,30,.5); }
+.chcard { text-align: center; margin: 56px 0 40px; animation: chIn 2s ease both; transition: margin .8s ease, opacity .8s ease; }
+.chcard .num { color: var(--blood2); font: 700 11px/1 var(--mono); letter-spacing: .4em; text-transform: uppercase; margin-bottom: 14px; }
+.chcard h2 { margin: 0; font: 400 clamp(26px, 6vw, 34px)/1.1 var(--serif); color: #f3ece4; text-shadow: 0 0 30px rgba(193,18,31,.8); letter-spacing: -.01em; }
+.chcard.settle { opacity: .4; margin: 26px 0 22px; }
+@keyframes chIn { 0% { opacity: 0; transform: scale(.92); filter: blur(10px); } 30% { opacity: 1; transform: translateX(4px); filter: blur(0); } 36% { transform: translateX(-4px); } 42% { transform: none; } 100% { opacity: 1; transform: none; } }
 
-  .typing { display: inline-flex; gap: 5px; padding: 14px 17px; margin: 6px 0; border-radius: 19px; background: rgba(34,37,52,.7); animation: bubIn .3s ease both; }
-  .typing.r { align-self: flex-end; background: rgba(66,52,100,.6); }
-  .typing i { width: 6px; height: 6px; border-radius: 50%; background: #9193a2; animation: bounce 1.2s infinite; }
-  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+.dock { flex: none; padding: 0 12px 8px; background: linear-gradient(rgba(10,7,9,0), rgba(10,7,9,.94) 18%); position: relative; z-index: 6; }
+.choices { display: grid; gap: 8px; padding: 10px 0 4px; }
+.choices:empty { padding: 0; }
+.choices button { position: relative; overflow: hidden; width: 100%; padding: 11px 14px; border-radius: 18px; text-align: left; background: rgba(30,20,26,.95); border: 1px solid rgba(255,255,255,.12); color: #eee6ea; font: 14px/1.45 var(--ui); cursor: pointer; transition: transform .2s, border-color .2s, background .2s, box-shadow .2s; animation: choiceIn .6s ease both; }
+.choices button:hover, .choices button:focus-visible { transform: translateY(-2px); border-color: rgba(255,45,61,.8); background: #2a131a; box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 20px rgba(255,45,61,.25); outline: none; }
+.choices button.picked { border-color: #ff2d3d; background: #3a0f18; }
+.choices button .n { color: var(--blood2); font: 700 11px var(--mono); margin-right: 10px; }
+.choices.danger button { border-color: rgba(255,45,61,.55); color: #ffb3ba; font: 700 13px var(--mono); letter-spacing: .14em; text-align: center; background: rgba(60,8,14,.8); animation: choiceIn .6s ease both, tempt 1.6s ease-in-out infinite; }
+@keyframes tempt { 0%,100% { box-shadow: 0 0 0 rgba(255,45,61,0); } 50% { box-shadow: 0 0 24px rgba(255,45,61,.55); } }
+.choices.keys { grid-template-columns: repeat(3, 1fr); }
+.choices.keys button { text-align: center; padding: 16px 8px; font-weight: 700; }
+.choices.keys .k { display: block; font-size: 30px; margin-bottom: 4px; }
+@keyframes choiceIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.inputbar { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 2px; padding: 7px 7px 7px 17px; border-radius: 26px; border: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.04); font: 14px var(--ui); color: #6a626a; }
+.inputbar i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 16px; color: #fff; background: linear-gradient(135deg, #c1121f, #5a0a12); }
+.homebar { width: 124px; height: 4.5px; border-radius: 3px; background: rgba(255,255,255,.5); margin: 9px auto 3px; }
 
-  .choices.out { animation: fadeOut .5s ease both; }
-  .choices:empty { padding: 0; }
-  button {
-    position: relative; overflow: hidden; width: 100%; border: 1px solid rgba(255,255,255,.1); background: rgba(24,26,38,.9); color: #ecebea;
-    padding: 15px 17px; border-radius: 14px; text-align: left; font: 15.5px/1.5 system-ui, sans-serif; cursor: pointer;
-    transition: transform .25s ease, border-color .25s ease, background .25s ease, box-shadow .25s ease;
-    animation: choiceIn .7s ease both;
-  }
-  button:hover, button:focus-visible { transform: translateY(-2px); border-color: rgba(184,164,255,.65); background: #23253a; box-shadow: 0 10px 30px rgba(0,0,0,.3), 0 0 22px rgba(184,164,255,.15); outline: none; }
-  button:active { transform: translateY(0); }
-  button.picked { border-color: var(--warm); background: #2e2430; }
-  button .n { color: var(--accent); font-size: 11px; margin-right: 10px; }
-  .ripple { position: absolute; border-radius: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; background: radial-gradient(circle, rgba(240,185,152,.6), transparent 70%); animation: ripple 1s ease-out both; pointer-events: none; }
-  .float { position: fixed; z-index: 30; pointer-events: none; color: var(--warm); text-shadow: 0 0 14px var(--warm); animation: floatUp 2.6s ease-out both; }
+.navbtn { position: absolute; z-index: 8; display: grid; place-items: center; width: auto; padding: 0; opacity: 0; pointer-events: none; transform: translateY(6px); color: #f2efec; background: rgba(40,16,22,.94); border: 1px solid rgba(255,45,61,.45); cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.5), 0 0 18px rgba(193,18,31,.3); transition: opacity .35s, transform .35s; }
+.navbtn.show { opacity: 1; pointer-events: auto; transform: none; }
+.navbtn.up { display: none; right: 12px; top: 10px; width: 38px; height: 38px; border-radius: 50%; font: 18px/1 var(--ui); }
+.navbtn.latest { left: 50%; bottom: 10px; margin-left: -48px; width: 96px; height: 32px; border-radius: 20px; font: 600 12px/1 var(--ui); }
+@media (hover: hover) and (pointer: fine) { .navbtn.up { display: grid; } }
 
-  /* ---------- ending ---------- */
-  .endcard { text-align: center; padding: 50px 6px 80px; animation: endIn 2s ease both; }
-  .endcard .heart { font-size: 40px; color: #ffd1b3; text-shadow: 0 0 30px #ffb98f; animation: pulse var(--beat) ease-in-out infinite; }
-  .endcard h2 { font-weight: 400; font-size: clamp(30px, 6vw, 46px); margin: 18px 0 8px; letter-spacing: -.02em; }
-  .endcard .the-end { color: var(--muted); font: 600 11px/1 system-ui, sans-serif; letter-spacing: .4em; text-transform: uppercase; }
-  .recap { margin: 40px auto 0; max-width: 460px; text-align: left; font: 14px/1.7 system-ui, sans-serif; color: #d6d3d6; }
-  .recap h3 { color: var(--accent); font: 600 10px/1 system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; margin: 0 0 12px; }
-  .recap ul { list-style: none; margin: 0; padding: 0; }
-  .recap li { padding: 7px 0 7px 16px; border-left: 2px solid rgba(240,185,152,.4); margin-bottom: 6px; opacity: 0; animation: fadeUp .8s ease both; }
-  .care { margin: 36px auto 0; max-width: 460px; font: 13px/1.7 system-ui, sans-serif; color: #c5c2c8; padding: 16px 18px; border-radius: 14px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.08); text-align: left; }
-  .restart { width: auto; display: inline-block; margin-top: 34px; padding: 12px 28px; border-radius: 40px; text-align: center; }
+/* ---------- overlays inside the phone ---------- */
+.hud { position: absolute; z-index: 9; top: 8px; left: 50%; transform: translate(-50%, -10px); opacity: 0; pointer-events: none; text-align: center; padding: 7px 18px 8px; border-radius: 14px; background: rgba(20,3,6,.92); border: 1px solid rgba(255,45,61,.7); transition: opacity .4s, transform .4s; box-shadow: 0 0 30px rgba(193,18,31,.5); }
+.hud.on { opacity: 1; transform: translate(-50%, 0); }
+.hud small { display: block; font: 700 9px var(--mono); letter-spacing: .24em; color: #ff8a94; text-transform: uppercase; }
+.hud b { display: block; font: 700 30px/1.1 var(--mono); color: #ff2d3d; text-shadow: 0 0 16px rgba(255,0,30,.8); letter-spacing: .06em; }
+.hud.low b { animation: shk .16s linear infinite, hb .5s ease-in-out infinite; }
+@keyframes hb { 50% { color: #fff; } }
+.cam { position: absolute; inset: 0; z-index: 10; background: #020303; opacity: 0; pointer-events: none; transition: opacity .3s; overflow: hidden; }
+.cam.on { opacity: 1; }
+.cam::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(transparent 0 2px, rgba(255,255,255,.035) 2px 3px); }
+.cam .lbl { position: absolute; top: 14px; left: 14px; font: 700 12px var(--mono); letter-spacing: .14em; color: #cfe8d8; }
+.cam .rec { position: absolute; top: 14px; right: 14px; font: 700 12px var(--mono); color: #ff3b4a; animation: blinkrec 1s steps(1) infinite; }
+@keyframes blinkrec { 50% { opacity: 0; } }
+.cam .shape { position: absolute; left: 50%; top: 52%; width: 120px; height: 300px; margin-left: -60px; background: radial-gradient(ellipse 50% 22% at 50% 14%, #c9c3b5 0 40%, transparent 70%), radial-gradient(ellipse 60% 70% at 50% 70%, #0a0a0a 0 60%, transparent 70%); filter: blur(2px); opacity: 0; }
+.cam.peek .shape { opacity: .32; }
+.cam .noise { position: absolute; inset: 0; opacity: .25; mix-blend-mode: screen; animation: gr .25s steps(3) infinite; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='1'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>"); }
+.hall { position: absolute; inset: 0; z-index: 10; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.2s; }
+.hall.on { opacity: 1; pointer-events: auto; }
+.hall canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hall .ht { position: absolute; left: 0; right: 0; bottom: 24px; text-align: center; padding: 0 20px; font: italic 15px/1.7 var(--serif); color: #cfc7c9; text-shadow: 0 2px 12px #000; min-height: 50px; }
+.blackout { position: absolute; inset: 0; z-index: 25; background: #000; opacity: 0; pointer-events: none; transition: opacity .12s; display: grid; place-items: center; }
+.blackout.on { opacity: 1; }
+.toast { position: absolute; z-index: 26; left: 12px; right: 12px; top: 56px; padding: 11px 14px; border-radius: 18px; background: rgba(32,18,24,.96); border: 1px solid rgba(255,45,61,.45); box-shadow: 0 10px 30px rgba(0,0,0,.6); transform: translateY(-260%); opacity: 0; visibility: hidden; transition: transform .45s cubic-bezier(.2,.9,.3,1.2), opacity .3s, visibility .45s; }
+.toast.in { transform: none; opacity: 1; visibility: visible; }
+.toast small { display: block; color: #ff6b77; font: 700 10px var(--mono); letter-spacing: .16em; text-transform: uppercase; margin-bottom: 3px; }
+.toast span { font-size: 14px; color: #f2eaee; }
+.lock { position: absolute; inset: 0; z-index: 24; display: none; flex-direction: column; align-items: center; background: radial-gradient(ellipse at 50% 20%, #1a0e14, #020203 70%); }
+.lock.on { display: flex; }
+.lock .lt { margin-top: 90px; font: 200 84px/1 var(--ui); color: #ece6ea; letter-spacing: -.02em; }
+.lock .ld { margin-top: 8px; font: 500 15px var(--ui); color: #a39ba2; }
+.lock .ln { margin: auto 16px 60px; width: calc(100% - 32px); padding: 13px 14px; border-radius: 20px; background: rgba(60,50,56,.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.1); text-align: left; color: #f2eaee; cursor: pointer; transform: translateY(40px); opacity: 0; transition: transform .6s cubic-bezier(.2,.9,.3,1.2), opacity .6s; animation: tempt 1.8s ease-in-out infinite; }
+.lock .ln.in { transform: none; opacity: 1; }
+.lock .ln small { display: block; font: 700 10px var(--ui); letter-spacing: .14em; color: #a39ba2; text-transform: uppercase; margin-bottom: 4px; }
+.lock .ln b { font-size: 15px; }
+.lock .hint { position: absolute; bottom: 24px; font: 11px var(--mono); letter-spacing: .2em; color: #6f666d; text-transform: uppercase; }
+.modal { position: absolute; inset: 0; z-index: 27; background: rgba(5,2,3,.94); display: none; flex-direction: column; justify-content: center; padding: 34px 26px; }
+.modal.on { display: flex; }
+.modal h3 { margin: 0 0 16px; font: 700 12px var(--mono); letter-spacing: .3em; color: #ff2d3d; text-align: center; }
+.modal ol { padding-left: 0; margin: 0 0 22px; list-style: none; counter-reset: r; }
+.modal li { counter-increment: r; padding: 11px 12px 11px 44px; position: relative; border-bottom: 1px solid rgba(255,45,61,.2); font: 14.5px/1.5 var(--ui); color: #f0e6ea; }
+.modal li::before { content: counter(r); position: absolute; left: 10px; top: 9px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1px solid #ff2d3d; color: #ff2d3d; font: 700 12px var(--mono); }
+.modal button { align-self: center; padding: 10px 26px; border-radius: 20px; background: #2a0a10; border: 1px solid #ff2d3d; color: #fff; font: 700 12px var(--mono); letter-spacing: .2em; cursor: pointer; width: auto; }
 
-  /* ---------- keyframes ---------- */
-  @keyframes fadeDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-  @keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
-  @keyframes titleIn { from { opacity: 0; letter-spacing: .25em; filter: blur(14px); } to { opacity: 1; letter-spacing: -.04em; filter: blur(0); } }
-  @keyframes chIn { 0% { opacity: 0; transform: scale(.94); filter: blur(10px); } 100% { opacity: 1; transform: none; filter: blur(0); } }
-  @keyframes narrIn { from { opacity: 0; filter: blur(5px); transform: translateY(8px); } to { opacity: .95; filter: blur(0); transform: none; } }
-  @keyframes bubIn { from { opacity: 0; transform: translateY(12px) scale(.95); } to { opacity: 1; transform: none; } }
-  @keyframes choiceIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  @keyframes wordIn { to { opacity: 1; filter: blur(0); } }
-  @keyframes heavyPulse { 0%,100% { box-shadow: 0 0 30px rgba(240,185,152,.08), 0 14px 40px rgba(0,0,0,.3); } 50% { box-shadow: 0 0 55px rgba(240,185,152,.22), 0 14px 40px rgba(0,0,0,.3); } }
-  @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
-  @keyframes ecg { 0% { stroke-dashoffset: 90; opacity: 1; } 60% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
-  @keyframes ache { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
-  @keyframes breathe { 0%,100% { opacity: .1; } 50% { opacity: .5; } }
-  @keyframes glow { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
-  @keyframes ripple { to { transform: scale(26); opacity: 0; } }
-  @keyframes floatUp { 0% { opacity: 0; transform: translateY(0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-130px) scale(1.4); } }
-  @keyframes pulse { 0%,100% { transform: scale(1); } 15% { transform: scale(1.16); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } }
-  @keyframes endIn { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+/* ---------- jumpscares & endings ---------- */
+.shake .device { animation: devshake .07s linear infinite; }
+@keyframes devshake { 0%,100% { transform: translate(0,0) rotate(0); } 25% { transform: translate(-7px,5px) rotate(-.6deg); } 50% { transform: translate(6px,-6px) rotate(.5deg); } 75% { transform: translate(-5px,-4px) rotate(-.3deg); } }
+.glitch .device { animation: glitchdev .5s steps(1) infinite; filter: drop-shadow(4px 0 0 rgba(255,0,60,.6)) drop-shadow(-4px 0 0 rgba(0,220,255,.45)); }
+@keyframes glitchdev { 0% { transform: translate(0,0); } 20% { transform: translate(-6px,2px) skewX(2deg); } 40% { transform: translate(5px,-3px); clip-path: inset(0 0 40% 0); } 41% { clip-path: none; } 60% { transform: translate(-3px,0) skewX(-3deg); } 80% { transform: translate(4px,3px); } }
+.scare { position: fixed; inset: 0; z-index: 100; background: #000; display: none; overflow: hidden; }
+.scare.on { display: block; }
+.scare canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: contrast(1.35) saturate(.85); transform-origin: 50% 48%; }
+.scare .stat { position: absolute; inset: 0; opacity: .5; mix-blend-mode: screen; animation: gr .1s steps(3) infinite; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='1'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>"); }
+.scare .red { position: absolute; inset: 0; background: #f00; mix-blend-mode: multiply; opacity: 0; }
+.scare.on.go.face canvas { animation: rush .45s cubic-bezier(.1,.8,.2,1) both, fshake .06s linear .4s infinite; }
+.scare.on.go.face .red { animation: redf .35s steps(3) .15s both; }
+.scare.on.go.back canvas { animation: bflash .18s steps(2) both; }
+.scare.on.go.back.close canvas { animation: rush2 .22s ease-out both; }
+.scare.on.go.door canvas { animation: doorrush 1.4s ease-in both, fshake .07s linear .9s infinite; }
+.scare.on.go.wrong canvas { animation: fshake .04s linear infinite; filter: hue-rotate(-30deg) contrast(1.8) brightness(1.4); }
+.scare.calm canvas { animation: calmin 1s ease both !important; opacity: .75; }
+.scare.calm .red, .scare.calm .stat { display: none; }
+@keyframes rush { 0% { transform: scale(.04); filter: blur(12px) brightness(.4); } 55% { transform: scale(.95); } 100% { transform: scale(1.35); filter: contrast(1.45) blur(0); } }
+@keyframes rush2 { 0% { transform: scale(.9); } 100% { transform: scale(1.25); } }
+@keyframes bflash { 0% { transform: scale(1.05) translateX(-8px); } 100% { transform: scale(1.12) translateX(8px); } }
+@keyframes doorrush { 0% { transform: scale(1); filter: brightness(.3) contrast(1.4); } 40% { filter: brightness(1.8) contrast(1.4); } 100% { transform: scale(1.5); filter: brightness(1) contrast(1.5); } }
+@keyframes fshake { 0%,100% { transform: scale(1.35) translate(0,0); } 25% { transform: scale(1.38) translate(-14px,10px); } 50% { transform: scale(1.33) translate(12px,-12px); } 75% { transform: scale(1.4) translate(-9px,-8px); } }
+@keyframes redf { 0% { opacity: 0; } 30% { opacity: .9; } 60% { opacity: .2; } 100% { opacity: .6; } }
+@keyframes calmin { from { opacity: 0; transform: scale(1); } to { opacity: .75; transform: scale(1.04); } }
+.final { position: fixed; inset: 0; z-index: 90; background: #000; display: none; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
+.final.on { display: flex; }
+.fbox { max-width: 520px; width: 100%; text-align: left; font: 14px/1.8 var(--mono); color: #d8cfd2; }
+.fbox .t { font: 700 clamp(26px, 7vw, 44px)/1.1 var(--mono); letter-spacing: .1em; margin: 6px 0 14px; color: #ff2d3d; text-shadow: 0 0 24px rgba(255,0,30,.7); animation: tflick 5s infinite; }
+.fbox .t.win { color: #e9e4da; text-shadow: 0 0 24px rgba(255,255,255,.35); }
+.fbox p { margin: 0 0 12px; opacity: 0; animation: fadeUp .9s ease both; }
+.fbox p.dim { color: #8b858d; }
+.fbox p.hot { color: #ff6b77; }
+.fbox .theend { margin: 24px 0 8px; letter-spacing: .5em; text-align: center; font-size: 12px; color: #8b858d; }
+.fbtns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 26px; animation: fadeUp 1s ease both; }
+.fbtns button { padding: 12px 24px; border-radius: 30px; width: auto; background: #1a0a0e; border: 1px solid rgba(255,45,61,.6); color: #ffd9dc; font: 700 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; cursor: pointer; }
+.fbtns button:hover { background: #3a0a12; }
+.ends { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 22px; font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.ends span { padding: 5px 9px; border-radius: 12px; border: 1px solid rgba(255,255,255,.15); color: #6a626a; }
+.ends span.f { border-color: #ff2d3d; color: #ff8a94; }
+.endbox { text-align: center; }
 
-  @media (max-width: 600px) { .bub { max-width: 90%; font-size: 16.5px; } .bar { width: 44px; } }
-  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01s !important; animation-delay: 0s !important; transition-duration: .01s !important; } .bub .w { opacity: 1; filter: none; } }
-
-  /* ---------- phone device ---------- */
-  body { overflow: hidden; height: 100vh; }
-  .app { position: relative; z-index: 5; width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 14px; opacity: 0; transition: opacity 1.6s ease; }
-  .device {
-    position: relative; width: min(410px, 100%); height: min(880px, calc(100vh - 28px)); padding: 11px; border-radius: 56px;
-    background: linear-gradient(145deg, #3a3c52, #14151e 55%, #272938);
-    box-shadow: 0 0 0 1.5px #44465c, 0 0 0 5px rgba(0,0,0,.35), 0 50px 100px rgba(0,0,0,.65), 0 0 100px rgba(184,164,255,.2), inset 0 0 6px rgba(255,255,255,.14);
-    animation: phoneIn 1.6s cubic-bezier(.2,.8,.2,1) both;
-  }
-  .device::before { content: ""; position: absolute; left: -4px; top: 150px; width: 4px; height: 52px; border-radius: 3px 0 0 3px; background: #3a3c52; box-shadow: 0 70px 0 #3a3c52; }
-  .device::after { content: ""; position: absolute; right: -4px; top: 210px; width: 4px; height: 84px; border-radius: 0 3px 3px 0; background: #3a3c52; }
-  .screen {
-    position: relative; height: 100%; border-radius: 45px; overflow: hidden; display: flex; flex-direction: column;
-    background: linear-gradient(rgba(10,11,19,.9), rgba(8,9,16,.86)); backdrop-filter: blur(18px);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
-  }
-  .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 45px; background: linear-gradient(120deg, rgba(255,255,255,.06), transparent 28%); }
-  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 108px; height: 30px; border-radius: 20px; background: #000; z-index: 6; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
-  .island::after { content: ""; position: absolute; right: 14px; top: 10px; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle, #2a3a66, #090b14); }
-  .statusbar { display: flex; justify-content: space-between; align-items: center; height: 50px; padding: 14px 30px 0; font: 600 14px/1 system-ui, -apple-system, sans-serif; color: #f2efec; letter-spacing: 0; text-transform: none; flex: none; }
-  #clock { transition: opacity .6s ease; }
-  .sicons { display: flex; align-items: center; gap: 6px; }
-  .sicons svg { width: 17px; height: 11px; fill: #e8e6ea; }
-  .batt { width: 24px; height: 11px; border: 1.5px solid #d4d2d8; border-radius: 4px; position: relative; display: block; }
-  .batt::before { content: ""; position: absolute; inset: 1.5px; width: 68%; background: #d4d2d8; border-radius: 1.5px; }
-  .batt::after { content: ""; position: absolute; right: -4px; top: 2.5px; width: 2px; height: 4px; background: #d4d2d8; border-radius: 0 1px 1px 0; }
-
-  .chathead { flex: none; display: flex; align-items: center; gap: 11px; padding: 8px 16px 11px; border-bottom: 1px solid rgba(255,255,255,.07); background: rgba(22,23,36,.72); }
-  .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 600 17px system-ui, sans-serif; color: #fff; background: linear-gradient(135deg, #8f7ae6, #f0b998); box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 4px 14px rgba(143,122,230,.4); }
-  .who2 b { display: block; font: 600 15.5px/1.2 system-ui, -apple-system, sans-serif; color: #fff; letter-spacing: 0; text-transform: none; }
-  .who2 small { display: block; margin-top: 2px; font: 11px/1.2 system-ui, sans-serif; color: #8fd6a5; letter-spacing: 0; text-transform: none; transition: color .4s ease; }
-  .hr { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-  .hr .ecg { width: 50px; height: 18px; }
-  .closeness { gap: 6px; font: 600 8.5px/1 system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
-  .bar { width: 54px; }
-  .progress { flex: none; margin: 0; border-radius: 0; height: 2px; }
-
-  .scroller { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 0; scrollbar-width: none; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(transparent, #000 20px); mask-image: linear-gradient(transparent, #000 20px); }
-  .scroller::-webkit-scrollbar { display: none; }
-  #chat { padding: 6px 0 18px; }
-  .stamp { text-align: center; font: 11px system-ui, sans-serif; color: #7d7f8d; margin: 10px 0 4px; }
-
-  .dock { flex: none; padding: 0 12px 8px; background: linear-gradient(rgba(8,9,16,0), rgba(8,9,16,.92) 18%); }
-  .choices { position: static; display: grid; gap: 8px; padding: 10px 0 4px; background: none; flex: none; }
-  .choices::-webkit-scrollbar { display: none; }
-  .choices:empty { padding: 0; }
-  .choices button { font-size: 13.5px; padding: 10px 14px; border-radius: 18px; }
-  .inputbar { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 2px; padding: 7px 7px 7px 17px; border-radius: 26px; border: 1px solid rgba(255,255,255,.11); background: rgba(255,255,255,.05); font: 14px system-ui, sans-serif; color: #7d7f8d; }
-  .inputbar i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 16px; color: #fff; background: linear-gradient(135deg, #8f7ae6, #6b55c4); box-shadow: 0 0 14px rgba(143,122,230,.5); }
-  .homebar { width: 124px; height: 4.5px; border-radius: 3px; background: rgba(255,255,255,.55); margin: 9px auto 3px; }
-
-  .bub { font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; font-size: 15.5px; line-height: 1.5; padding: 10px 14px; max-width: 84%; background: rgba(46,49,68,.96); }
-  .row.r .bub { background: linear-gradient(135deg, #7d65d9, #5a45ab); border: none; box-shadow: 0 8px 22px rgba(90,69,171,.35); }
-  .bub.x { background: rgba(68,50,56,.96); }
-  .bub.heavy { background: rgba(48,32,44,.96); }
-  .typing { background: rgba(46,49,68,.9); }
-  .chcard { margin: 34px 0 28px; }
-  .chcard h2 { font-size: clamp(24px, 6vw, 31px); }
-  .chcard.settle { margin: 20px 0 16px; }
-  .narr { font-size: 14.5px; line-height: 1.8; margin: 18px 4px; }
-  .endcard { padding: 24px 0 30px; }
-  .endcard h2 { font-size: 28px; }
-
-  @keyframes phoneIn { from { opacity: 0; transform: translateY(40px) scale(.96); } to { opacity: 1; transform: none; } }
-
-  @media (max-width: 520px) {
-    .app { padding: 0; height: 100vh; height: 100dvh; }
-    .device { width: 100%; height: 100%; padding: 0; border-radius: 0; background: none; box-shadow: none; }
-    .device::before, .device::after, .island { display: none; }
-    .screen, .screen::after { border-radius: 0; }
-    .statusbar { height: 38px; padding: 10px 22px 0; }
-  }
-
-  /* ---------- scroll back + nav ---------- */
-  .chatwrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .chatwrap .scroller { flex: 1; outline: none; }
-  .chatwrap .navbtn {
-    position: absolute; width: auto; padding: 0; text-align: center; animation: none; z-index: 8;
-    display: grid; place-items: center; opacity: 0; pointer-events: none; transform: translateY(6px);
-    color: #f2efec; background: rgba(36,38,58,.92); border: 1px solid rgba(184,164,255,.35); backdrop-filter: blur(8px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 18px rgba(143,122,230,.25);
-    transition: opacity .35s ease, transform .35s ease, border-color .25s ease, background .25s ease;
-  }
-  .chatwrap .navbtn.show { opacity: 1; pointer-events: auto; transform: none; }
-  .chatwrap .navbtn:hover { transform: translateY(-2px); background: rgba(52,48,84,.96); border-color: rgba(184,164,255,.8); }
-  .navbtn.up { display: none !important; right: 12px; top: 10px; width: 38px; height: 38px; border-radius: 50%; font: 18px/1 system-ui, sans-serif; }
-  .navbtn.latest { left: 50%; bottom: 10px; margin-left: -48px; width: 96px !important; height: 32px; border-radius: 20px; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .02em; }
-  .navbtn.latest.show { animation: latestGlow 2.4s ease-in-out infinite; }
-  @keyframes latestGlow { 0%,100% { box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 8px rgba(143,122,230,.2); } 50% { box-shadow: 0 8px 24px rgba(0,0,0,.4), 0 0 24px rgba(184,164,255,.6); } }
-  @media (hover: hover) and (pointer: fine) {
-    .navbtn.up { display: grid !important; }
-  }
+@media (max-width: 520px) {
+  .app { padding: 0; }
+  .device { width: 100%; height: 100%; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+  .device::before, .device::after, .island { display: none; }
+  .screen, .screen::after { border-radius: 0; }
+  .statusbar { height: 38px; padding: 10px 22px 0; }
+  .facts { grid-template-columns: repeat(2, auto); }
+}
+body.calm .flick, body.calm .grain { display: none; }
+body.calm .device, body.calm.shake .device, body.calm.glitch .device { animation: none; filter: none; }
+@media (prefers-reduced-motion: reduce) { .grain, .fog { animation: none; } }
 </style>
 </head>
-<body data-mood="night">
-
-<div class="sky" id="sky">
-  <i data-m="night" class="on"></i><i data-m="rain"></i><i data-m="heavy"></i><i data-m="warm"></i><i data-m="dawn"></i><i data-m="day"></i>
-</div>
-<div class="sun"></div>
-<canvas id="fx"></canvas>
-<div class="vig" id="vig"></div>
-<div class="glow" id="glow"></div>
-<div class="grain"></div>
+<body data-mood="dread">
+<div class="fog"></div><div class="vig"></div><div class="grain"></div><div class="flick" id="flick"></div>
 
 <div class="intro" id="intro">
-  <div class="eyebrow">An interactive story</div>
-  <h1>The Last Message</h1>
-  <p class="sub">Sometimes staying is the most important thing you can say.</p>
-  <div class="note">A quiet story about burnout, loneliness, and the friend who shows up. Best read slowly. Tap anywhere to speed up the pacing.</div>
-  <button class="begin" id="begin">Begin</button>
+  <div class="eyebrow">A text-message survival horror story</div>
+  <h1>THE <b>GROUP</b> CHAT</h1>
+  <p class="sub">You were added at 2:13 AM. Whatever you do, don't leave.</p>
+  <div class="facts"><div><b>1 / 6</b>survival rate</div><div><b>20 min</b>playtime</div><div><b>1</b>player</div></div>
+  <div class="warn"><strong>Warning:</strong> flashing images, loud sudden sounds and jump scares. Best played in the dark, with headphones. Choose <em>Reduce flashing</em> below for a gentler version.</div>
+  <div class="opts">
+    <label><input type="checkbox" id="optSound" checked> Sound</label>
+    <label><input type="checkbox" id="optCalm"> Reduce flashing &amp; shaking</label>
+  </div>
+  <button class="begin" id="begin" type="button">Open the chat</button>
 </div>
 
 <div class="app" id="app">
-  <div class="device"><div class="screen">
+  <div class="device"><div class="screen" id="screen">
     <div class="island"></div>
     <div class="statusbar">
-      <span id="clock">11:47 PM</span>
-      <span class="sicons">
-        <svg viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".6"/><rect x="4.7" y="5" width="3" height="6" rx=".6"/><rect x="9.4" y="2.5" width="3" height="8.5" rx=".6"/><rect x="14" y="0" width="3" height="11" rx=".6"/></svg>
-        <i class="batt"></i>
-      </span>
+      <span id="clock">2:13 AM</span>
+      <span class="sicons"><svg viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".6"/><rect x="4.7" y="5" width="3" height="6" rx=".6"/><rect x="9.4" y="2.5" width="3" height="8.5" rx=".6"/><rect x="14" y="0" width="3" height="11" rx=".6" opacity=".3"/></svg><i class="batt"></i></span>
     </div>
     <div class="chathead">
-      <div class="avatar">E</div>
-      <div class="who2"><b>Eli</b><small id="presence">active now</small></div>
-      <div class="hr">
-        <svg class="ecg" viewBox="0 0 62 22"><path d="M0 11 H16 L20 4 L26 19 L31 8 L34 11 H62"/></svg>
-        <div class="closeness"><span>closeness</span><div class="bar"><b id="ember"></b></div></div>
-      </div>
+      <div class="avs" id="avs"></div>
+      <div class="who2"><b id="gname">DON'T LEAVE</b><small id="gsub">6 members</small></div>
+      <div class="hbtns"><button class="hbtn hide" id="rulesBtn" type="button">RULES</button><button class="hbtn" id="muteBtn" type="button" aria-label="Toggle sound">SND ON</button></div>
     </div>
-    <div class="progress"><i id="progress"></i></div>
-    <div class="chatwrap">
+    <div class="pulse-line"><i id="progress"></i></div>
+    <div class="chatwrap" id="chatwrap">
       <div class="scroller" id="scroller" tabindex="0" aria-label="Conversation"><main id="chat" role="log" aria-live="polite"></main></div>
-      <button class="navbtn up" id="upBtn" type="button" aria-label="Scroll up to earlier messages" title="Scroll up">↑</button>
+      <button class="navbtn up" id="upBtn" type="button" aria-label="Scroll up to earlier messages">↑</button>
       <button class="navbtn latest" id="latestBtn" type="button" aria-label="Jump to latest message">↓ Latest</button>
+      <div class="hud" id="hud"><small id="hudl">TASK</small><b id="hudt">00:00</b></div>
+      <div class="cam" id="cam"><div class="lbl">FRONT CAMERA</div><div class="rec">● REC</div><div class="shape"></div><div class="noise"></div></div>
+      <div class="hall" id="hall"><canvas id="hallCv" width="380" height="640"></canvas><div class="ht" id="hallT"></div></div>
     </div>
     <div class="dock">
       <div class="choices" id="choices"></div>
       <div class="inputbar"><span>Message</span><i>↑</i></div>
       <div class="homebar"></div>
     </div>
+    <div class="toast" id="toast"><small id="toastF">Unknown</small><span id="toastT"></span></div>
+    <div class="modal" id="rules"><h3>— THE RULES —</h3><ol>
+      <li>Don't say his name.</li><li>Don't open the door.</li><li>Don't turn around when you hear someone behind you.</li><li>When the lights go out, stay completely still.</li><li>If you receive a message from yourself... do not answer.</li></ol>
+      <button id="rulesClose" type="button">CLOSE</button></div>
+    <div class="lock" id="lock"><div class="lt">2:13</div><div class="ld">Saturday, October 17</div>
+      <button class="ln" id="lockN" type="button"><small>Messages · now</small><b>You were added to a group.</b></button><div class="hint">tap to open</div></div>
+    <div class="blackout" id="blackout"></div>
   </div></div>
 </div>
 
+<div class="scare" id="scare"><canvas id="scareCv" width="720" height="900"></canvas><div class="red"></div><div class="stat"></div></div>
+<div class="final" id="final"><div class="fbox" id="fbox"></div></div>
+
 <script>
+"use strict";
 /* ============================================================
-   STORY DATA
-   ============================================================ */
-const E = (t, o = {}) => ({ k: "msg", w: "e", t, ...o });
-const M = (t) => ({ k: "msg", w: "m", t });
-const X = (name, t, o = {}) => ({ k: "msg", w: "x", name, t, ...o });
-const N = (t) => ({ k: "n", t });
-const CH = (n, t) => ({ k: "ch", n, t });
-const MOOD = (v) => ({ k: "mood", v });
-const TIME = (v) => ({ k: "time", v });
-const P = (ms) => ({ k: "pause", ms });
-const ACHE = { k: "ache" };
-const H = { h: true };
-
-const TOTAL_CHAPTERS = 9;
-
-const beats = [
-  /* ---------- I ---------- */
-  {
-    l: [
-      CH(1, "You awake?"), TIME("11:47 PM"), MOOD("rain"),
-      N("Rain taps the window of Mara's bedroom. The room is dark except for the pale glow of her phone."),
-      N("She is half asleep when the screen lights up."),
-      E("you awake?")
-    ],
-    c: [
-      { t: "Yeah. What's up?", d: 2, r: [E("hey"), E("sorry. I know it's late")] },
-      { t: "Barely lol. Why?", d: 1, r: [E("no reason"), P(900), E("...okay there's kind of a reason")] },
-      { t: "It's almost midnight 😭 what do you want", d: 0, r: [E("oh"), E("sorry. forget it"), N("Three dots appear. Disappear. Appear again."), E("no wait. actually")] }
-    ]
-  },
-  {
-    l: [
-      E("it's nothing really"), E("just couldn't sleep"), P(1200),
-      E("do you ever feel like everyone's moving forward except you?")
-    ],
-    c: [
-      { t: "Yeah. More often than I'd like to admit.", d: 2, r: [E("really?"), E("I thought it was just me"), N("Something in the way Eli types softens. It's the first time tonight he doesn't sound like he's apologizing.")] },
-      { t: "Why are you asking?", d: 1, r: [E("I don't know"), E("it's been a long week. a long year, maybe")] },
-      { t: "You'll catch up eventually.", d: 0, r: [E("yeah"), E("maybe"), N("It's what people say when they want a conversation to be lighter. Eli has heard it a hundred times. Tonight it sounds like a door quietly closing.")] }
-    ]
-  },
-
-  /* ---------- II ---------- */
-  {
-    l: [
-      CH(2, "I'm trying."), TIME("12:09 AM"),
-      E("Mom asked me today when I'm going to get a real job."),
-      E("Dad hasn't said anything in months."),
-      E("I think he's disappointed.")
-    ],
-    c: [
-      { t: "You're not a disappointment.", d: 2, r: [E("you have to say that"), E("you're my friend"), M("I don't have to. I'm saying it because it's true."), P(900), E("...thanks")] },
-      { t: "You should tell your parents how you're feeling.", d: 0, r: [E("yeah. I know"), E("it's not that easy"), E("they'd just worry. or get angry")] },
-      { t: "I know you're trying.", d: 2, r: [E("..."), E("nobody's said that to me in a while"), N("Mara watches the screen. Whatever comes next, she decides she won't look away from it.")] }
-    ]
-  },
-  {
-    l: [
-      E("I wake up tired."), E("I go to sleep tired."), E("and somehow I'm still behind everyone."), P(1000),
-      E("my little brother got accepted into college today."),
-      E("everyone was so happy."), E("I was happy too."), E("I really was."), P(1600),
-      E("I just went to the bathroom afterward and cried for like twenty minutes.", H)
-    ],
-    c: [
-      { t: "I'm sorry.", d: 1, r: [E("don't be"), E("it's not like anyone did anything"), E("that's the weird part")] },
-      { t: "You don't have to compare yourself to him.", d: 1, r: [E("I know that"), E("my brain just doesn't listen")] },
-      { t: "Why didn't you tell me this before?", d: 0, r: [E("because you'd look at me the way you're looking at me right now"), M("I'm not looking at you. You're a text bubble."), E("lol"), E("okay fair"), N("It's the first laugh of the night. Small and cracked, and real.")] }
-    ]
-  },
-
-  /* ---------- III ---------- */
-  {
-    l: [
-      CH(3, "Don't make this weird."), TIME("12:41 AM"),
-      N("Eli sends a photo. A cup of coffee gone cold. Laundry on the floor. An old résumé open on a laptop. A calendar where almost every day is empty."),
-      E("this is basically my life now")
-    ],
-    c: [
-      { t: "Then let's change it. Together.", d: 2, r: [E("lol 'together'"), E("you say that like it's easy"), M("I didn't say easy.")] },
-      { t: "You need to get out more.", d: 0, r: [E("thanks. very helpful"), E("sorry. that came out meaner than I meant"), E("I'm just tired")] },
-      { t: "Can I come over?", d: 2, r: [E("no"), P(700), E("actually"), P(700), E("maybe"), E("but don't make this weird okay"), N("Mara is already pulling a hoodie over her pajamas. She doesn't answer yet. Something tells her to listen first.")] }
-    ]
-  },
-
-  /* ---------- IV ---------- */
-  {
-    l: [
-      CH(4, "The thing I couldn't say"), TIME("1:12 AM"), MOOD("heavy"),
-      N("The typing dots appear. They vanish. They appear again. This goes on for almost two minutes."),
-      E("..."),
-      E("I don't want you to see me like this."), P(1200),
-      E("I think I'm tired of pretending I'm okay.", H),
-      E("not 'bad day' tired."),
-      E("I mean tired of smiling and saying 'I'm fine' while nobody notices it's a lie.", H),
-      N("Mara's thumbs hover over the keyboard. Every instinct says to fix it. To say something wise. To say something clever."),
-      N("Instead she does the harder, plainer thing. She tells the truth.")
-    ],
-    c: [
-      { t: "I noticed. I just didn't know how to ask. I'm sorry I didn't.", d: 2, r: [E("..."), P(1200), E("you noticed?", H), E("okay. that actually means a lot")] },
-      { t: "I'm not going anywhere. Tell me what it's like.", d: 2, r: [E("..."), E("it's like standing in a room full of people with the door locked from the inside", H), E("and I'm the one who locked it")] },
-      { t: "You don't have to be okay with me.", d: 1, r: [E("..."), E("that's the first time anyone's said that"), N("Mara reads his reply once and feels the floor tilt. Then she steadies herself.")] }
-    ]
-  },
-  {
-    l: [
-      E("I've been so scared of being a burden"),
-      E("like if I told anyone how heavy it is, they'd get tired of carrying it with me"),
-      E("so I just kept saying 'I'm good'"),
-      E("for like a year")
-    ],
-    c: [
-      { t: "Thank you for telling me. You're not a burden.", d: 2, r: [E("..."), E("okay"), E("I think I needed someone to say that")] },
-      { t: "Can I come over? You don't have to talk. I'll just sit.", d: 2, r: [E("you'd really do that?"), E("it's 1am")] },
-      { t: "Call me. Right now.", d: 1, r: [N("Her phone is ringing before she finishes typing. Eli picks up on the fourth ring. For a long moment neither of them says anything. She can hear him breathing."), N("It's enough."), E("...hi")] }
-    ]
-  },
-
-  /* ---------- V ---------- */
-  {
-    l: [
-      CH(5, "Stay."), TIME("1:34 AM"),
-      N("Mara is already moving. Shoes. Keys. A jacket over her pajamas."),
-      M("I'm coming over. Stay on the phone with me."),
-      E("you really don't have to"),
-      M("I know."), M("I'm coming anyway."),
-      N("The ride is long and wet and quiet. She keeps the call open the whole way. Sometimes the right thing is just a sound on the other end of the line."),
-      N("The porch light is off. She knocks. Nothing. She knocks again. Finally, the door opens."),
-      MOOD("warm"),
-      N("Eli looks exhausted. Red eyes, a sweatshirt two sizes too big. Neither of them says a word. Mara simply steps inside and sits beside him on the stairs."),
-      E("I don't even know where to start")
-    ],
-    c: [
-      { t: "You don't have to fix it tonight.", d: 2, r: [E("everything feels so big"), E("it feels like if I touch one thing the whole pile falls"), M("Then we don't touch anything. We just sit.")] },
-      { t: "We'll figure it out.", d: 1, r: [E("how do you know that"), M("I don't. But I'm going to be here while we do.")] },
-      { t: "I don't know either. But I'm not going anywhere.", d: 2, r: [E("..."), E("that's weirdly the best thing you could've said")] }
-    ]
-  },
-  {
-    l: [
-      N("Eli talks. About the résumés he never sent. About how the days blur into one long Tuesday. About his dad, and the silence he's been avoiding because he's afraid of what it means."),
-      E("I think I'm scared he's right about me"),
-      E("and scared he's not and I just can't hear it")
-    ],
-    c: [
-      { t: "What if the silence isn't disappointment? What if he doesn't know what to say either?", d: 2, r: [E("..."), E("huh"), E("I never thought about that")] },
-      { t: "That fear is lying to you. Loudly.", d: 1, r: [E("lol"), E("it really is loud")] },
-      { t: "(Say nothing. Slide your hand next to his.)", d: 2, r: [N("Mara says nothing. She sets her hand on the step beside his. After a while, he takes it.")] }
-    ]
-  },
-  {
-    l: [
-      ACHE,
-      N("A floorboard creaks upstairs. Eli's little brother appears on the landing in a rumpled T-shirt, squinting. He looks at Eli's face. At Mara. He doesn't ask. He sits down on the step above them."),
-      X("Noah", "I heard you crying. Tonight. And like, a week ago too."),
-      X("Noah", "I didn't know what to say, so I didn't say anything. I'm sorry."),
-      E("..."),
-      X("Noah", "I got in because you stayed up with me for all four drafts of that essay. At two in the morning."),
-      E("that was nothing"),
-      X("Noah", "It wasn't nothing."),
-      N("Eli puts his face in his hands. His shoulders shake. Noah leans forward and rests his forehead against his brother's back. Nobody says anything for a long time.")
-    ],
-    c: [
-      { t: "Would you let me come with you to see a doctor or a counselor?", d: 2, r: [E("..."), E("yeah"), E("okay"), E("I'm scared"), M("I know. I'll be in the waiting room reading terrible magazines.")] },
-      { t: "Let's tell your mom. Tonight, together.", d: 1, r: [E("tonight?"), M("Or as soon as the sun's up. But soon. You don't have to say it right."), E("okay")] },
-      { t: "Let's sleep first. In the morning, we make a plan.", d: 1, r: [E("okay"), E("you'll still be here?"), M("I'll be on your couch. Drooling.")] }
-    ]
-  },
-
-  /* ---------- VI ---------- */
-  {
-    l: [
-      CH(6, "Morning"), TIME("6:12 AM"), MOOD("dawn"),
-      N("Gray light. The rain has stopped. The smell of coffee. Eli's mother is in the kitchen in her robe, hands wrapped around a mug. She looks up as he appears in the doorway."),
-      E("Mom? Can I tell you something?"),
-      N("It takes four minutes. Eli's voice shakes the whole time. His mother doesn't say a word until he's finished. Then she crosses the kitchen and holds him as if he were five years old."),
-      X("Mom", "Thank you for telling me."),
-      X("Mom", "I'm not going anywhere. And neither is your father. He's been standing in the hallway for ten minutes trying to find the nerve."),
-      N("His dad steps into the light. He opens his mouth. Closes it. Opens it again."),
-      X("Dad", "I should have said this months ago. I'm proud of you. I never stopped."),
-      N("Over his father's shoulder, Eli looks at Mara. Mara looks right back."),
-      P(1500),
-      N("Later, on the porch, the world is washed clean. Two cups of tea. A sky the color of peaches."),
-      E("I thought you'd get tired of me.")
-    ],
-    c: [
-      { t: "I probably will sometimes. That's allowed. I'll still stay.", d: 2, r: [E("...that's the most honest thing anyone's said to me"), E("and somehow it helps more than 'never' would")] },
-      { t: "Never.", d: 1, r: [E("never's a long time"), M("I'm a long-term person."), E("lol")] },
-      { t: "You're stuck with me.", d: 1, r: [E("I'll take it"), N("He leans, just slightly, until his shoulder rests against hers.")] }
-    ]
-  },
-
-  /* ---------- VII ---------- */
-  {
-    l: [
-      CH(7, "Small things"), TIME("Weeks later"), MOOD("warm"),
-      N("Week one. A waiting room with beige walls. Mara reads a three-year-old magazine about boats. Eli comes out after an hour looking wrung out and slightly lighter."),
-      N("Week three. A text: a photo of a clean desk, a window with the curtains open."),
-      E("the window works. who knew"),
-      N("Week five. Eli sends a job application. Then another. A rejection email arrives and he's sad for a day, but it's regular sad. The kind with edges. The kind that ends."),
-      N("Not everything gets better. Some mornings, the old gray settles in. The difference is that now he says so, out loud, to someone."),
-      P(900),
-      E("bad day today. not 'bad' bad. just heavy"),
-      E("can you stay on the phone for a bit?")
-    ],
-    c: [
-      { t: "Always. Tell me about the heaviest part.", d: 2, r: [E("it's quiet today"), E("but it's easier when someone's in the quiet with me")] },
-      { t: "Already dialing.", d: 2, r: [N("The phone rings. He picks up on the first ring this time.")] },
-      { t: "Heavy is okay. I'm bringing snacks.", d: 1, r: [E("what kind of snacks"), M("The kind that make bad days a little less bad."), E("okay. yes. come over")] }
-    ]
-  },
-
-  /* ---------- VIII ---------- */
-  {
-    l: [
-      CH(8, "The last message"), TIME("12:03 AM"), MOOD("night"),
-      N("Another night. Another small rain. Mara's phone buzzes on the nightstand."),
-      E("you awake?")
-    ],
-    c: [
-      { t: "Yeah. What's up?", d: 1, r: [E("nothing bad"), E("I just wanted to say something")] },
-      { t: "Again? 😭", d: 1, r: [E("lol"), E("yes. again. I'll keep doing it"), E("I just wanted to say something")] },
-      { t: "Always.", d: 2, r: [E("..."), E("I know"), E("that's kind of the whole thing, actually")] }
-    ]
-  },
-  {
-    l: [
-      E("thank you for staying"),
-      E("that night. and after."),
-      E("I didn't know a text could do that")
-    ],
-    c: [
-      { t: "You're the one who sent it. That was the brave part.", d: 2, r: [E("..."), E("it didn't feel brave"), M("It never does.")] },
-      { t: "I'm so glad you did.", d: 2, r: [E("me too"), E("weirdly. me too")] }
-    ]
-  }
-];
-
-const MAX_TRUST = beats.reduce((s, b) => s + Math.max(...b.c.map(x => x.d)), 0);
-
-/* ---------- endings ---------- */
-function endingLines(ratio) {
-  const intro = ratio >= 0.65
-    ? [N("One year later, Mara and Eli are sitting on the bench outside the café where he now works part-time, and where he first said out loud: \"I'm struggling.\""),
-       N("Noah is in his first semester and calls home every Sunday. Dinner with his parents isn't perfect, but it's real, and sometimes his dad just rests a hand on his shoulder and leaves it there.")]
-    : ratio >= 0.35
-    ? [N("A year later, nothing is fixed exactly. But the days have edges again. Eli sees someone every other Thursday, and he has a job he's still deciding whether he loves."),
-       N("Noah texts him memes from his dorm. His dad calls on Sundays and sometimes just talks about the weather, which, Eli has learned, is how some people say \"I love you.\"")]
-    : [N("A year later, it has been slower than anyone wanted. Mara said some clumsy things that night, and learned something important: clumsy-but-present beats perfect-but-absent, every time."),
-       N("Eli has therapy on Thursdays, a job he's still figuring out, and a family that learned to speak the hard things a little at a time. A friend who keeps showing up helps too.")];
-  return [
-    CH(9, "One year later"), TIME("A year later"), MOOD("day"),
-    ...intro,
-    N("He still has bad days. Sometimes the gray comes back. But he knows now that it's weather, not a verdict, and that he doesn't have to wait it out alone."),
-    P(1200),
-    N("Today, though, he's laughing. Really laughing."),
-    N("Mara gets up to get them coffee. Her phone buzzes."),
-    E("you awake?"),
-    N("Mara laughs. She turns around. He's right there on the bench, grinning like an idiot."),
-    M("you're literally sitting next to me."),
-    E("yeah"),
-    P(900),
-    E("just wanted to make sure."),
-    P(1200),
-    N("And for a moment the whole sky seems to agree."),
-    P(1800),
-    N("Later, walking home, Mara thinks about how all of it began with three words at a bad hour of the night."),
-    N("She used to believe that helping someone meant having the right answer. Now she knows it mostly means having the right posture: turned toward them, shoes on, door open."),
-    N("Most people aren't waiting to be fixed. They're waiting to be noticed."),
-    P(1200),
-    N("Somewhere tonight, someone is typing a message, deleting it, and typing it again. Someone is saying \"I'm fine\" for the hundredth time and hoping, quietly, that somebody won't believe it."),
-    N("It costs almost nothing to be the person who doesn't.")
-  ];
-}
-
-/* ============================================================
-   ENGINE
+   CORE
    ============================================================ */
 const $ = id => document.getElementById(id);
-const chat = $("chat"), choicesEl = $("choices"), clockEl = $("clock");
-let trust = 0, fast = false, locked = false, lastWho = "", picked = [], running = false;
+const CANCEL = Symbol("cancel"), END = Symbol("end");
+let gen = 0, calm = false, lastWho = "", stick = true, lastInput = 0, cur = 0;
+const wait = ms => { const g = gen; return new Promise((res, rej) => setTimeout(() => g === gen ? res() : rej(CANCEL), ms)); };
+const raw = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
+const fire = fn => { (async () => { try { await fn(); } catch (e) { if (e !== CANCEL && e !== END) console.error(e); } })(); };
+const vib = p => { try { if (!calm && navigator.vibrate) navigator.vibrate(p); } catch (e) {} };
+const chat = $("chat"), sc = $("scroller"), choicesEl = $("choices");
 
-// "fast" (tap to speed up) only applies within a beat; "locked" scenes (chapter cards, the ending) always play at full pace.
-const sleep = ms => new Promise(r => setTimeout(r, fast && !locked ? Math.min(ms, 45) : ms));
-const esc = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
+const CHAR = {
+  mia:     { n: "Mia",     c: "#ff9db4", i: "M", bg: "linear-gradient(135deg,#ff9db4,#8a2c48)" },
+  daniel:  { n: "Daniel",  c: "#8ec9ff", i: "D", bg: "linear-gradient(135deg,#8ec9ff,#254a78)" },
+  sarah:   { n: "Sarah",   c: "#ffd98a", i: "S", bg: "linear-gradient(135deg,#ffd98a,#7a5a1c)" },
+  john:    { n: "John",    c: "#9ee6b4", i: "J", bg: "linear-gradient(135deg,#9ee6b4,#1f6a3c)" },
+  unknown: { n: "Unknown", c: "#ff3b4a", i: "?", bg: "linear-gradient(135deg,#2a0a10,#000)" },
+  you:     { n: "You",     c: "#c9a0ff", i: "Y", bg: "linear-gradient(135deg,#c9a0ff,#4a2a8a)" }
+};
+const H = { name: "DON'T LEAVE", list: [], sub: null, danielPhoto: null };
 
-/* Auto-follow new messages only while the reader is at the bottom; scrolling up pauses it. */
-let stick = true, lastInput = 0;
-const distFromBottom = () => { const sc = $("scroller"); return sc.scrollHeight - sc.scrollTop - sc.clientHeight; };
-function updateNav() {
-  const sc = $("scroller");
-  $("upBtn").classList.toggle("show", sc.scrollTop > 140);
-  $("latestBtn").classList.toggle("show", !stick && distFromBottom() > 140);
-}
+/* ---------- scroll (follow only when at bottom) ---------- */
+const dist = () => sc.scrollHeight - sc.scrollTop - sc.clientHeight;
+function updateNav() { $("upBtn").classList.toggle("show", sc.scrollTop > 140); $("latestBtn").classList.toggle("show", !stick && dist() > 140); }
 function scrollEnd(force) {
-  const sc = $("scroller");
   if (force === true) stick = true;
   if (!stick) { updateNav(); return; }
-  setTimeout(() => sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" }), 30);
+  setTimeout(() => sc.scrollTo({ top: sc.scrollHeight, behavior: calm ? "auto" : "smooth" }), 30);
 }
-(function initScroll() {
-  const sc = $("scroller");
-  ["wheel", "touchstart", "touchmove", "mousedown", "pointerdown"].forEach(ev => sc.addEventListener(ev, () => { lastInput = performance.now(); }, { passive: true }));
-  document.addEventListener("keydown", e => { if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(e.key)) lastInput = performance.now(); });
-  sc.addEventListener("scroll", () => {
-    const near = distFromBottom() < 60;
-    if (performance.now() - lastInput < 900) stick = near;   // the reader is steering
-    else if (near) stick = true;                               // our own smooth scroll arrived
-    updateNav();
-  }, { passive: true });
-  $("upBtn").onclick = () => { lastInput = performance.now(); stick = false; sc.scrollBy({ top: -sc.clientHeight * 0.8, behavior: "smooth" }); };
-  $("latestBtn").onclick = () => { stick = true; sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" }); updateNav(); };
-})();
-function addEl(cls, html) { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; chat.appendChild(d); scrollEnd(); return d; }
+["wheel", "touchstart", "touchmove", "mousedown", "pointerdown"].forEach(ev => sc.addEventListener(ev, () => { lastInput = performance.now(); }, { passive: true }));
+document.addEventListener("keydown", e => { if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(e.key)) lastInput = performance.now(); });
+sc.addEventListener("scroll", () => {
+  const near = dist() < 60;
+  if (performance.now() - lastInput < 900) stick = near; else if (near) stick = true;
+  updateNav();
+}, { passive: true });
+$("upBtn").onclick = () => { lastInput = performance.now(); stick = false; sc.scrollBy({ top: -sc.clientHeight * .8, behavior: "smooth" }); };
+$("latestBtn").onclick = () => { stick = true; sc.scrollTo({ top: sc.scrollHeight, behavior: "smooth" }); updateNav(); };
 
-/* ---------- mood ---------- */
-const BEATS_PER_MOOD = { night: 1.7, rain: 1.8, heavy: 2.9, warm: 1.25, dawn: 1.1, day: 1.0 };
-function setMood(m) {
-  document.body.dataset.mood = m;
-  document.querySelectorAll(".sky i").forEach(i => i.classList.toggle("on", i.dataset.m === m));
-  document.documentElement.style.setProperty("--beat", BEATS_PER_MOOD[m] + "s");
-  Object.assign(target, MOODS[m]);
+/* ============================================================
+   AUDIO (synthesized: no files)
+   ============================================================ */
+const A = { ctx: null, master: null, noise: null, on: true, d: null };
+function aInit() {
+  if (A.ctx) { A.ctx.resume && A.ctx.resume(); return; }
+  try {
+    const C = window.AudioContext || window.webkitAudioContext; A.ctx = new C();
+    A.master = A.ctx.createGain(); A.master.gain.value = A.on ? .9 : 0; A.master.connect(A.ctx.destination);
+    const b = A.ctx.createBuffer(1, A.ctx.sampleRate * 2, A.ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; A.noise = b;
+    const lp = A.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 140;
+    const g = A.ctx.createGain(); g.gain.value = .05; lp.connect(g); g.connect(A.master);
+    [55, 55.8, 82.4].forEach((f, i) => { const o = A.ctx.createOscillator(); o.type = i < 2 ? "sawtooth" : "sine"; o.frequency.value = f; o.connect(lp); o.start(); });
+    const lfo = A.ctx.createOscillator(), lg = A.ctx.createGain(); lfo.frequency.value = .11; lg.gain.value = 60; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+    A.d = { lp, g };
+  } catch (e) {}
 }
-function setTime(t) {
-  clockEl.style.opacity = 0;
-  setTimeout(() => { clockEl.textContent = t; clockEl.style.opacity = 1; }, 500);
+function tension(v) { if (!A.d) return; const t = A.ctx.currentTime; A.d.g.gain.setTargetAtTime(.03 + v * .09, t, 1.5); A.d.lp.frequency.setTargetAtTime(110 + v * 260, t, 1.5); }
+function setSound(on) { A.on = on; if (A.master) A.master.gain.setTargetAtTime(on ? .9 : 0, A.ctx.currentTime, .05); $("muteBtn").textContent = on ? "SND ON" : "SND OFF"; }
+function tone(f, d, type = "sine", v = .2, when = 0, to) {
+  if (!A.ctx || !A.on) return; const t = A.ctx.currentTime + when, o = A.ctx.createOscillator(), g = A.ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + Math.min(.02, d / 3)); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g); g.connect(A.master); o.start(t); o.stop(t + d + .05);
 }
-function ache() { const v = $("vig"); v.classList.remove("on"); void v.offsetWidth; v.classList.add("on"); }
-function warmGlow() { const g = $("glow"); g.classList.remove("on"); void g.offsetWidth; g.classList.add("on"); }
-
-/* ---------- line playback ---------- */
-async function play(lines) { for (const l of lines) await line(l); }
-
-async function line(l) {
-  switch (l.k) {
-    case "ch": return chapter(l);
-    case "mood": return setMood(l.v);
-    case "time": return setTime(l.v);
-    case "pause": return sleep(l.ms);
-    case "ache": ache(); return sleep(1600);
-    case "n": lastWho = ""; addEl("narr", esc(l.t)); return sleep(800 + l.t.length * 24);
-    case "msg": return message(l);
+function noiseB(d, v, type, f0, f1, when = 0, q = 1) {
+  if (!A.ctx || !A.on) return; const t = A.ctx.currentTime + when, s = A.ctx.createBufferSource(), fl = A.ctx.createBiquadFilter(), g = A.ctx.createGain();
+  s.buffer = A.noise; s.loop = true; fl.type = type; fl.frequency.setValueAtTime(f0, t); if (f1 !== f0) fl.frequency.exponentialRampToValueAtTime(f1, t + d); fl.Q.value = q;
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + Math.min(.03, d / 3)); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  s.connect(fl); fl.connect(g); g.connect(A.master); s.start(t); s.stop(t + d + .05);
+}
+const SFX = {
+  ping() { tone(880, .18, "triangle", .16); tone(1318, .3, "triangle", .12, .12); },
+  pop() { tone(300, .08, "sine", .05); },
+  click() { tone(200, .06, "square", .05); },
+  thump() { tone(62, .3, "sine", .5); tone(48, .35, "sine", .4, .15); },
+  sys() { tone(110, .35, "sawtooth", .1); tone(113, .35, "sawtooth", .08); },
+  step(v = .3) { noiseB(.14, v, "lowpass", 260, 70); tone(55, .14, "sine", v * .6); },
+  breath() { noiseB(1.5, .06, "bandpass", 1000, 500, 0, 3); },
+  boom() { tone(45, 1.4, "sine", .6, 0, 20); noiseB(1, .3, "lowpass", 400, 60); },
+  stinger(kind) {
+    const k = calm ? .35 : 1;
+    noiseB(1, .8 * k, "bandpass", 3500, 200, 0, .8);
+    tone(90, .9, "sawtooth", .5 * k, 0, 28);
+    if (kind === "face" || kind === "door") {
+      tone(780, 1.2, "sawtooth", .2 * k, 0, 1500); tone(1180, 1.2, "sawtooth", .15 * k, 0, 620); tone(310, 1.3, "square", .13 * k, 0, 900); tone(2400, .6, "sawtooth", .12 * k, 0, 700);
+    } else { tone(1900, .35, "sawtooth", .2 * k, 0, 500); }
   }
-}
+};
 
-async function chapter(l) {
-  lastWho = "";
-  $("progress").style.width = ((l.n - 1) / TOTAL_CHAPTERS * 100) + "%";
-  const d = addEl("chcard", `<div class="num">Chapter ${ROMAN[l.n]}</div><h2>${esc(l.t)}</h2>`);
-  const was = locked; locked = true;
-  await sleep(2600);
-  locked = was;
-  d.classList.add("settle");
+/* ============================================================
+   IMAGE DRAWING (all procedural)
+   ============================================================ */
+function grain(x, w, h, a = .15) {
+  const n = document.createElement("canvas"); n.width = n.height = 128; const g = n.getContext("2d"), d = g.createImageData(128, 128);
+  for (let i = 0; i < d.data.length; i += 4) { d.data[i] = d.data[i + 1] = d.data[i + 2] = Math.random() * 255; d.data[i + 3] = 255; }
+  g.putImageData(d, 0, 0); x.save(); x.globalAlpha = a; x.globalCompositeOperation = "overlay"; x.fillStyle = x.createPattern(n, "repeat"); x.fillRect(0, 0, w, h); x.restore();
 }
-
-function bubbleHTML(l, label, side) {
-  const cls = (l.w === "x" ? "x " : "") + (l.h ? "heavy" : "");
-  const body = l.h
-    ? l.t.split(" ").map((w, i) => `<span class="w" style="animation-delay:${i * 0.24}s">${esc(w)}</span>`).join(" ")
-    : esc(l.t).replace(/\n/g, "<br>");
-  return `${label ? `<span class="who">${esc(label)}</span>` : ""}<div class="bub ${cls}">${body}</div>`;
+function vignette(x, w, h, a = .8) { const g = x.createRadialGradient(w / 2, h / 2, h * .2, w / 2, h / 2, h * .75); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, `rgba(0,0,0,${a})`); x.fillStyle = g; x.fillRect(0, 0, w, h); }
+function paleFace(x, s) {
+  x.save(); x.scale(s, s);
+  let g = x.createRadialGradient(-8, -20, 6, 0, 0, 78); g.addColorStop(0, "#ece5d6"); g.addColorStop(.6, "#b7af9f"); g.addColorStop(1, "#2a2520");
+  x.fillStyle = g; x.beginPath(); x.ellipse(0, 0, 46, 74, 0, 0, 7); x.fill();
+  for (const sd of [-1, 1]) { x.fillStyle = "#000"; x.beginPath(); x.ellipse(sd * 17, -14, 11, 15, sd * .2, 0, 7); x.fill(); x.fillStyle = "#fff"; x.beginPath(); x.arc(sd * 15, -13, 1.6, 0, 7); x.fill(); }
+  x.fillStyle = "#000"; x.beginPath(); x.moveTo(-26, 30); x.quadraticCurveTo(0, 62, 26, 30); x.quadraticCurveTo(0, 82, -26, 30); x.fill();
+  x.fillStyle = "#d9d0b8"; for (let i = -4; i <= 4; i++) { x.beginPath(); x.moveTo(i * 5 - 2, 36 + Math.abs(i)); x.lineTo(i * 5 + 2, 36 + Math.abs(i)); x.lineTo(i * 5, 45 - Math.abs(i) * .6); x.fill(); }
+  x.strokeStyle = "rgba(0,0,0,.85)"; x.lineWidth = 1.6; for (let i = 0; i < 16; i++) { const sx = -40 + i * 5.4; x.beginPath(); x.moveTo(sx, -72); x.bezierCurveTo(sx + 6, -30, sx - 8, 0, sx + (i % 3 - 1) * 8, 30 + (i % 4) * 8); x.stroke(); }
+  x.restore();
 }
-
-async function message(l) {
-  const side = l.w === "m" ? "r" : "l";
-  const ty = addEl("typing " + side, "<i></i><i></i><i></i>");
-  if (side === "l") $("presence").textContent = "typing…";
-  await sleep(Math.min(450 + l.t.length * 30, l.h ? 2600 : 1700));
-  ty.remove(); $("presence").textContent = "active now";
-  const key = l.w === "x" ? l.name : l.w;
-  const label = key !== lastWho ? (l.w === "e" ? "Eli" : l.w === "m" ? "Mara" : l.name) : "";
-  lastWho = key;
-  addEl("row " + side, bubbleHTML(l, label, side));
-  if (l.h) { ache(); await sleep(l.t.split(" ").length * 240 + 900); }
-  else await sleep(320 + Math.min(l.t.length * 8, 500));
+function drawFace(cv, glitchy) {
+  const w = cv.width = 720, h = cv.height = 900, x = cv.getContext("2d");
+  let g = x.createRadialGradient(w / 2, h * .5, 10, w / 2, h * .5, h * .75); g.addColorStop(0, "#3d0808"); g.addColorStop(1, "#000"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.save(); x.translate(w / 2, h * .5);
+  x.fillStyle = "#14100e"; x.fillRect(-100, h * .3, 200, h * .3);
+  g = x.createRadialGradient(-30, -90, 30, 0, 0, h * .42); g.addColorStop(0, "#e9e2d2"); g.addColorStop(.55, "#b3ab9b"); g.addColorStop(1, "#241f1b");
+  x.fillStyle = g; x.beginPath(); x.ellipse(0, 0, w * .27, h * .38, 0, 0, 7); x.fill();
+  for (const s of [-1, 1]) {
+    const ex = s * w * .105, ey = -h * .09;
+    g = x.createRadialGradient(ex, ey, 5, ex, ey, w * .14); g.addColorStop(0, "rgba(0,0,0,.95)"); g.addColorStop(.6, "rgba(0,0,0,.7)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.beginPath(); x.arc(ex, ey, w * .14, 0, 7); x.fill();
+    x.fillStyle = "#000"; x.beginPath(); x.ellipse(ex, ey, w * .062, h * .052, s * .2, 0, 7); x.fill();
+    x.fillStyle = "#fff"; x.beginPath(); x.arc(ex - s * 3, ey + 2, 6, 0, 7); x.fill();
+    x.fillStyle = "rgba(255,40,40,.9)"; x.beginPath(); x.arc(ex - s * 3, ey + 2, 2.5, 0, 7); x.fill();
+  }
+  x.fillStyle = "rgba(0,0,0,.75)"; x.beginPath(); x.ellipse(-15, h * .05, 6, 15, .2, 0, 7); x.ellipse(15, h * .05, 6, 15, -.2, 0, 7); x.fill();
+  const my = h * .17;
+  g = x.createLinearGradient(0, my - 60, 0, my + 200); g.addColorStop(0, "#000"); g.addColorStop(1, "#1a0000");
+  x.fillStyle = g; x.beginPath(); x.moveTo(-w * .13, my); x.quadraticCurveTo(0, my - 55, w * .13, my); x.quadraticCurveTo(w * .17, my + 180, 0, my + 235); x.quadraticCurveTo(-w * .17, my + 180, -w * .13, my); x.fill();
+  x.fillStyle = "#d4cbb4";
+  for (let i = -5; i <= 5; i++) { const bx = i * 15; x.beginPath(); x.moveTo(bx - 7, my - 18 + Math.abs(i) * 3.5); x.lineTo(bx + 7, my - 18 + Math.abs(i) * 3.5); x.lineTo(bx, my + 28 + (i % 2 ? 14 : 0) - Math.abs(i)); x.fill(); }
+  for (let i = -4; i <= 4; i++) { const bx = i * 16; x.beginPath(); x.moveTo(bx - 7, my + 215 - Math.abs(i) * 4); x.lineTo(bx + 7, my + 215 - Math.abs(i) * 4); x.lineTo(bx, my + 165 - (i % 2 ? 12 : 0)); x.fill(); }
+  x.strokeStyle = "rgba(70,0,0,.85)"; x.lineWidth = 2;
+  for (let i = 0; i < 26; i++) { x.beginPath(); const sx = (Math.random() - .5) * w * .5, sy = (Math.random() - .5) * h * .6; x.moveTo(sx, sy); x.lineTo(sx + (Math.random() - .5) * 90, sy + (Math.random() - .5) * 140); x.stroke(); }
+  x.restore();
+  x.strokeStyle = "rgba(0,0,0,.9)"; x.lineWidth = 3;
+  for (let i = 0; i < 40; i++) { const sx = w * (.1 + Math.random() * .8); x.beginPath(); x.moveTo(sx, 0); x.bezierCurveTo(sx + 30, h * .2, sx - 40, h * .35, sx + (Math.random() - .5) * 90, h * (.4 + Math.random() * .3)); x.stroke(); }
+  grain(x, w, h, .4); vignette(x, w, h, .85);
+  if (glitchy) { x.globalCompositeOperation = "screen"; x.fillStyle = "rgba(255,0,60,.25)"; x.fillRect(12, 0, w, h); x.fillStyle = "rgba(0,255,255,.18)"; x.fillRect(-12, 0, w, h); for (let i = 0; i < 9; i++) { x.drawImage(cv, 0, Math.random() * h, w, 40, (Math.random() - .5) * 90, Math.random() * h, w, 40); } }
 }
+function drawBack(cv, close) {
+  const w = cv.width = 720, h = cv.height = 900, x = cv.getContext("2d");
+  let g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#0a1412"); g.addColorStop(1, "#1d2825"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.fillStyle = "rgba(255,255,255,.04)"; for (let i = 0; i < 5; i++) x.fillRect(30 + i * 140, 50, 100, h - 150);
+  x.fillStyle = "#020404"; x.fillRect(w * .58, h * .1, w * .32, h * .64);
+  const cx = w * .36, cy = h * .56;
+  x.fillStyle = "#090c0c"; x.beginPath(); x.moveTo(cx - 250, h); x.quadraticCurveTo(cx - 240, cy + 130, cx - 95, cy + 85); x.lineTo(cx + 95, cy + 85); x.quadraticCurveTo(cx + 240, cy + 130, cx + 250, h); x.fill();
+  g = x.createRadialGradient(cx - 20, cy - 40, 10, cx, cy, 120); g.addColorStop(0, "#1d2423"); g.addColorStop(1, "#0b0e0e");
+  x.fillStyle = g; x.beginPath(); x.ellipse(cx, cy, 98, 118, 0, 0, 7); x.fill();
+  x.strokeStyle = "rgba(255,255,255,.06)"; x.lineWidth = 3; x.beginPath(); x.moveTo(cx, cy - 110); x.lineTo(cx, cy + 20); x.stroke();
+  x.save(); x.translate(close ? w * .62 : w * .74, close ? h * .4 : h * .36); paleFace(x, close ? 2.5 : .85); x.restore();
+  g = x.createRadialGradient(w * .4, h * .5, 60, w * .4, h * .5, h * .8); g.addColorStop(0, "rgba(255,255,225,.28)"); g.addColorStop(1, "rgba(0,0,0,.65)"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  grain(x, w, h, .35);
+  x.fillStyle = "#ff9b3a"; x.font = "700 26px Consolas, monospace"; x.fillText("03:12:44 AM", 26, h - 28); x.fillStyle = "#ff3b4a"; x.fillText("● REC", w - 120, 44);
+}
+function drawDoor(cv) {
+  const w = cv.width = 720, h = cv.height = 900, x = cv.getContext("2d");
+  x.fillStyle = "#050000"; x.fillRect(0, 0, w, h);
+  let g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#fff7e2"); g.addColorStop(1, "#d9a064");
+  x.fillStyle = g; x.fillRect(w * .27, h * .06, w * .46, h * .88);
+  g = x.createRadialGradient(w / 2, h * .3, 10, w / 2, h * .3, w * .5); g.addColorStop(0, "rgba(255,255,255,.7)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.fillStyle = "#020202"; x.strokeStyle = "#020202"; x.lineCap = "round"; x.lineJoin = "round";
+  x.save(); x.translate(w / 2, 0); x.rotate(.07);
+  x.beginPath(); x.ellipse(0, h * .205, 34, 50, 0, 0, 7); x.fill();
+  x.lineWidth = 12; x.beginPath(); x.moveTo(0, h * .25); x.quadraticCurveTo(14, h * .31, 0, h * .36); x.stroke();
+  x.beginPath(); x.moveTo(-70, h * .37); x.lineTo(-18, h * .35); x.lineTo(18, h * .35); x.lineTo(70, h * .37); x.lineTo(46, h * .96); x.lineTo(-46, h * .96); x.fill();
+  x.lineWidth = 13; x.beginPath(); x.moveTo(-62, h * .38); x.quadraticCurveTo(-170, h * .6, -150, h * .9); x.stroke(); x.beginPath(); x.moveTo(62, h * .38); x.quadraticCurveTo(170, h * .6, 150, h * .9); x.stroke();
+  x.lineWidth = 3; for (const sd of [-1, 1]) for (let f = 0; f < 4; f++) { x.beginPath(); x.moveTo(sd * 150, h * .9); x.lineTo(sd * (150 + (f - 1.5) * 9), h * .985); x.stroke(); }
+  x.fillStyle = "#fff"; for (const sd of [-1, 1]) { x.beginPath(); x.ellipse(sd * 14, h * .2, 4, 11, sd * .15, 0, 7); x.fill(); }
+  x.restore();
+  x.fillStyle = "#000"; x.fillRect(0, 0, w * .27, h); x.fillRect(w * .73, 0, w * .27, h);
+  grain(x, w, h, .45); vignette(x, w, h, .75);
+}
+function photoGroup() {
+  const c = document.createElement("canvas"); c.width = 480; c.height = 320; const x = c.getContext("2d");
+  let g = x.createLinearGradient(0, 0, 0, 320); g.addColorStop(0, "#0b1020"); g.addColorStop(1, "#1a1620"); x.fillStyle = g; x.fillRect(0, 0, 480, 320);
+  x.fillStyle = "#050507"; x.fillRect(0, 238, 480, 82);
+  x.fillStyle = "#0a090c"; x.fillRect(120, 70, 240, 170); x.beginPath(); x.moveTo(100, 72); x.lineTo(240, 8); x.lineTo(380, 72); x.fill(); x.fillRect(300, 20, 24, 40);
+  x.fillStyle = "#e8c27a"; x.fillRect(150, 105, 28, 34); x.fillRect(300, 105, 28, 34); x.fillStyle = "#000"; x.fillRect(220, 160, 40, 80);
+  const ppl = [90, 160, 240, 320, 390];
+  ppl.forEach((px, i) => {
+    x.fillStyle = "#17141a"; x.beginPath(); x.roundRect ? x.roundRect(px - 18, 200, 36, 78, 10) : x.rect(px - 18, 200, 36, 78); x.fill();
+    x.fillStyle = i === 2 ? "#b9ab98" : "#cdbfae"; x.beginPath(); x.arc(px, 188, 15, 0, 7); x.fill();
+    if (i === 2) { x.strokeStyle = "#1a0000"; x.lineWidth = 2; for (let k = 0; k < 14; k++) { x.beginPath(); x.moveTo(px - 15 + Math.random() * 30, 174 + Math.random() * 28); x.lineTo(px - 15 + Math.random() * 30, 174 + Math.random() * 28); x.stroke(); } x.strokeStyle = "#7a0a12"; x.lineWidth = 3; x.beginPath(); x.moveTo(px - 13, 176); x.lineTo(px + 13, 202); x.moveTo(px + 13, 176); x.lineTo(px - 13, 202); x.stroke(); }
+  });
+  g = x.createRadialGradient(240, 200, 30, 240, 200, 250); g.addColorStop(0, "rgba(255,240,200,.15)"); g.addColorStop(1, "rgba(0,0,0,.55)"); x.fillStyle = g; x.fillRect(0, 0, 480, 320);
+  grain(x, 480, 320, .35); x.fillStyle = "#ff9b3a"; x.font = "700 13px monospace"; x.fillText("3 YEARS AGO", 12, 308);
+  return c.toDataURL();
+}
+function photoJohn() {
+  const c = document.createElement("canvas"); c.width = 480; c.height = 320; const x = c.getContext("2d");
+  let g = x.createLinearGradient(0, 0, 0, 320); g.addColorStop(0, "#0b0f1c"); g.addColorStop(1, "#15121a"); x.fillStyle = g; x.fillRect(0, 0, 480, 320);
+  x.fillStyle = "#08070a"; x.fillRect(100, 40, 280, 200); x.beginPath(); x.moveTo(80, 44); x.lineTo(240, -10); x.lineTo(400, 44); x.fill();
+  x.fillStyle = "#1a1410"; x.fillRect(205, 90, 70, 150); x.fillStyle = "#000"; x.fillRect(212, 96, 56, 144);
+  x.fillStyle = "#0d0c0f"; x.beginPath(); x.ellipse(240, 108, 12, 16, 0, 0, 7); x.fill(); x.fillRect(236, 118, 8, 110);
+  x.strokeStyle = "#0d0c0f"; x.lineWidth = 6; x.lineCap = "round"; x.beginPath(); x.moveTo(237, 130); x.lineTo(215, 215); x.moveTo(243, 130); x.lineTo(265, 215); x.stroke();
+  x.fillStyle = "#e8e0cf"; x.fillRect(235, 103, 3, 3); x.fillRect(243, 103, 3, 3);
+  x.fillStyle = "#050506"; x.fillRect(0, 240, 480, 80);
+  x.fillStyle = "#14161c"; x.beginPath(); x.ellipse(240, 276, 70, 56, 0, 0, 7); x.fill(); x.fillStyle = "#0e1016"; x.beginPath(); x.ellipse(240, 232, 38, 44, 0, 0, 7); x.fill();
+  g = x.createRadialGradient(240, 180, 20, 240, 180, 260); g.addColorStop(0, "rgba(255,240,200,.1)"); g.addColorStop(1, "rgba(0,0,0,.6)"); x.fillStyle = g; x.fillRect(0, 0, 480, 320);
+  grain(x, 480, 320, .35); return c.toDataURL();
+}
+function avatarBack() { const c = document.createElement("canvas"); c.width = 120; c.height = 120; const t = document.createElement("canvas"); drawBack(t, false); c.getContext("2d").drawImage(t, 0, 80, 720, 720, 0, 0, 120, 120); return c.toDataURL(); }
 
-/* ---------- choices ---------- */
-function ask(options) {
-  fast = false;
-  return new Promise(resolve => {
-    choicesEl.classList.remove("out");
-    choicesEl.innerHTML = "";
-    options.forEach((o, i) => {
-      const b = document.createElement("button");
-      b.style.animationDelay = (i * 0.12) + "s";
-      b.innerHTML = `<span class="n">${i + 1}</span>${esc(o.t)}`;
-      b.onclick = (ev) => pick(b, o, ev, resolve);
-      choicesEl.appendChild(b);
-    });
-    scrollEnd();
+/* ---------- hallway ---------- */
+const hall = { on: false, pos: 0, target: 0, raf: 0 };
+function hallLoop() {
+  if (!hall.on) return; const c = $("hallCv"), x = c.getContext("2d"), w = c.width, h = c.height;
+  hall.pos += (hall.target - hall.pos) * .05;
+  const bob = Math.sin(hall.pos * 6) * 3, cx = w / 2, cy = h * .46 + bob, off = hall.pos % 1;
+  x.fillStyle = "#0b0608"; x.fillRect(0, 0, w, h);
+  const box = d => { const s = 1 / (d * .35 + .35); return { hw: w * .5 * s * .55, hh: h * .5 * s * .5, s }; };
+  const n = box(.3), f = box(12);
+  x.fillStyle = "#170a0d"; x.beginPath(); x.moveTo(cx - n.hw, cy + n.hh); x.lineTo(cx + n.hw, cy + n.hh); x.lineTo(cx + f.hw, cy + f.hh); x.lineTo(cx - f.hw, cy + f.hh); x.fill();
+  x.fillStyle = "#0f080b"; x.beginPath(); x.moveTo(cx - n.hw, cy - n.hh); x.lineTo(cx + n.hw, cy - n.hh); x.lineTo(cx + f.hw, cy - f.hh); x.lineTo(cx - f.hw, cy - f.hh); x.fill();
+  x.strokeStyle = "rgba(190,30,40,.55)"; x.lineWidth = 2; x.beginPath();
+  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { x.moveTo(cx + sx * w * 1.2, cy + sy * h * 1.2); x.lineTo(cx + sx * f.hw, cy + sy * f.hh); }
+  x.stroke();
+  for (let i = 12; i >= 0; i--) {
+    const d = i - off + .3, b = box(d), a = Math.max(0, 1 - d / 12);
+    x.strokeStyle = `rgba(210,38,48,${a * .9})`; x.lineWidth = 2.5 * b.s; x.strokeRect(cx - b.hw, cy - b.hh, b.hw * 2, b.hh * 2);
+    if (((i + Math.floor(hall.pos)) % 3) === 0) { const fl = Math.random() > .96 ? .1 : 1; x.fillStyle = `rgba(255,232,190,${a * .85 * fl})`; x.fillRect(cx - b.hw * .14, cy - b.hh + 1, b.hw * .28, 3 * b.s + 2); }
+    if (((i + Math.floor(hall.pos)) % 4) === 1) { x.fillStyle = `rgba(0,0,0,${a * .85})`; x.fillRect(cx - b.hw, cy - b.hh * .55, b.hw * .12, b.hh * 1.2); x.fillRect(cx + b.hw * .88, cy - b.hh * .55, b.hw * .12, b.hh * 1.2); }
+  }
+  const g = x.createRadialGradient(cx, cy, 4, cx, cy, h * .5); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(.14, "rgba(0,0,0,.85)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  vignette(x, w, h, .75); hall.raf = requestAnimationFrame(hallLoop);
+}
+function hallOn(v) { hall.on = v; $("hall").classList.toggle("on", v); cancelAnimationFrame(hall.raf); if (v) { hall.pos = hall.target = 0; hallLoop(); } }
+
+/* ---------- fake found-footage video ---------- */
+function runVideo(cv) {
+  return new Promise(res => {
+    const x = cv.getContext("2d"), w = cv.width, h = cv.height, g0 = gen; let t0 = performance.now();
+    function f(now) {
+      if (g0 !== gen) return res(); const t = (now - t0) / 1000, jx = (Math.random() - .5) * 3, jy = (Math.random() - .5) * 3;
+      x.fillStyle = "#050607"; x.fillRect(0, 0, w, h); x.save(); x.translate(jx, jy);
+      if (t < 2.8) {
+        x.fillStyle = "#0b0e18"; x.fillRect(0, 0, w, h * .6); x.fillStyle = "#08090d"; x.fillRect(80, 50, 160, 90); x.beginPath(); x.moveTo(66, 54); x.lineTo(160, 10); x.lineTo(254, 54); x.fill();
+        x.fillStyle = "#e8c27a"; x.fillRect(100, 74, 16, 20); x.fillRect(204, 74, 16, 20);
+        for (let i = 0; i < 5; i++) { const px = -20 + t * 62 - i * 26; if (px > -10 && px < w) { x.fillStyle = "#14121a"; x.fillRect(px - 5, h * .62, 10, 28); x.fillStyle = "#c8baa8"; x.beginPath(); x.arc(px, h * .6, 5.5, 0, 7); x.fill(); } }
+      } else if (t < 5.2) {
+        for (let i = 9; i >= 0; i--) { const d = i - ((t * 2) % 1), s = 1 / (d * .4 + .4), hw = w * .3 * s * .5, hh = h * .4 * s * .5; x.strokeStyle = `rgba(120,120,110,${Math.max(0, .6 - d / 12)})`; x.strokeRect(w / 2 - hw, h / 2 - hh, hw * 2, hh * 2); }
+        const gg = x.createRadialGradient(w / 2 + Math.sin(t * 3) * 30, h / 2, 5, w / 2, h / 2, 120); gg.addColorStop(0, "rgba(255,255,220,.25)"); gg.addColorStop(1, "rgba(0,0,0,.85)"); x.fillStyle = gg; x.fillRect(0, 0, w, h);
+      } else {
+        x.fillStyle = "#16171a"; x.fillRect(0, 0, w, h); const a = Math.min(1, (t - 5.4) / 1.2); x.fillStyle = `rgba(190,20,30,${a})`; x.font = "700 22px Georgia"; x.textAlign = "center"; x.fillText("ONE OF YOU", w / 2, h * .42 + Math.sin(t * 9) * 1.2); x.fillText("MUST STAY.", w / 2, h * .6);
+        const gg = x.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, 170); gg.addColorStop(0, "rgba(255,255,230,.12)"); gg.addColorStop(1, "rgba(0,0,0,.8)"); x.fillStyle = gg; x.fillRect(0, 0, w, h);
+      }
+      x.restore();
+      for (let i = 0; i < 70; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * .22})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 1); }
+      x.fillStyle = "rgba(255,255,255,.04)"; for (let y = 0; y < h; y += 3) x.fillRect(0, y, w, 1);
+      x.fillStyle = "#ffffff"; x.font = "12px monospace"; x.textAlign = "left"; x.fillText("CAM 01  " + String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(Math.floor(t % 60)).padStart(2, "0"), 8, 16); x.fillStyle = "#ff3b4a"; x.fillText("● REC", w - 52, 16);
+      if (t > 7.6) { x.fillStyle = "#000"; x.fillRect(0, 0, w, h); x.fillStyle = "#fff"; x.font = "14px monospace"; x.textAlign = "center"; x.fillText("SIGNAL LOST", w / 2, h / 2); }
+      if (t < 8.6) requestAnimationFrame(f); else res();
+    }
+    requestAnimationFrame(f);
   });
 }
 
-function pick(btn, o, ev, resolve) {
-  if (choicesEl.dataset.busy) return;
-  choicesEl.dataset.busy = "1";
-  const rect = btn.getBoundingClientRect();
-  const rp = document.createElement("span");
-  rp.className = "ripple";
-  rp.style.left = (ev && ev.clientX ? ev.clientX - rect.left : rect.width / 2) + "px";
-  rp.style.top = (ev && ev.clientY ? ev.clientY - rect.top : rect.height / 2) + "px";
-  btn.appendChild(rp);
-  btn.classList.add("picked");
-  if (o.d > 0) {
-    warmGlow();
-    for (let i = 0; i < o.d + 1; i++) {
-      const h = document.createElement("div");
-      h.className = "float"; h.textContent = i % 2 ? "♡" : "✦";
-      h.style.left = (rect.left + rect.width * (.25 + Math.random() * .5)) + "px";
-      h.style.top = (rect.top + 6) + "px";
-      h.style.animationDelay = (i * .25) + "s";
-      document.body.appendChild(h);
-      setTimeout(() => h.remove(), 3200);
-    }
-  }
-  setTimeout(() => {
-    choicesEl.classList.add("out");
-    setTimeout(() => {
-      choicesEl.innerHTML = ""; delete choicesEl.dataset.busy;
-      const label = lastWho !== "m" ? "Mara" : "";
-      lastWho = "m";
-      stick = true;
-      addEl("row r", bubbleHTML({ w: "m", t: o.t }, label, "r"));
-      picked.push(o.t);
-      trust += o.d;
-      $("ember").style.width = Math.max(6, Math.min(100, trust / MAX_TRUST * 100)) + "%";
-      resolve(o);
-    }, 450);
-  }, 650);
+/* ============================================================
+   UI HELPERS
+   ============================================================ */
+function renderHead() {
+  $("gname").textContent = H.name;
+  const av = $("avs"); av.innerHTML = "";
+  H.list.slice(0, 5).forEach(k => {
+    const s = document.createElement("span"); s.className = "av"; const c = CHAR[k]; s.textContent = c.i; s.style.background = c.bg;
+    if (k === "daniel" && H.danielPhoto) { s.textContent = ""; s.style.background = `url(${H.danielPhoto}) center/cover`; }
+    av.appendChild(s);
+  });
+  setSub(null);
+}
+function setHead(o) { Object.assign(H, o); renderHead(); }
+function setSub(t, bump) { const s = $("gsub"); s.className = t ? "typ" : ""; s.textContent = t || (H.sub || `${H.list.length} members`); if (bump) { void s.offsetWidth; s.classList.add("bump"); } }
+function removeMember(k, label) { H.list = H.list.filter(x => x !== k); renderHead(); setSub(label || null, true); }
+function mood(m) { document.body.dataset.mood = m; tension({ calm: .15, dread: .35, still: .55, panic: .85, dawn: .05 }[m] ?? .3); }
+function addEl(cls, html) { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; chat.appendChild(d); scrollEnd(); return d; }
+function lightsFlicker() { if (calm) return; const f = $("flick"); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go"); }
+function glitch(ms) { if (calm) return Promise.resolve(); document.body.classList.add("glitch"); return raw(ms).then(() => document.body.classList.remove("glitch")); }
+function setClock(t) { $("clock").textContent = t; }
+
+async function typing(who, ms) {
+  const d = addEl("typing" + (who === "unknown" ? " un" : ""), "<i></i><i></i><i></i>"); setSub(`${CHAR[who].n} is typing…`);
+  try { await wait(ms); } finally { d.remove(); setSub(null); }
+}
+async function say(who, text, o = {}) {
+  const ch = CHAR[who], mine = who === "you" && !o.mirror;
+  if (!mine) await typing(who, o.t ?? Math.min(450 + text.length * 26, 1500)); else await wait(o.t ?? 350);
+  const label = who !== lastWho; lastWho = who;
+  const row = addEl("row " + (mine ? "r" : ""), (label ? `<span class="who" style="color:${ch.c}">${ch.n}</span>` : "") + `<div class="bub ${who}${o.mirror ? " mirror" : ""} ${o.cls || ""}">${esc(text)}</div>`);
+  if (!mine) SFX.pop();
+  await wait(o.after ?? 320 + Math.min(text.length * 9, 480));
+  return row.querySelector(".bub");
+}
+async function photo(who, url, o = {}) {
+  await typing(who, 900); const ch = CHAR[who], label = who !== lastWho; lastWho = who;
+  const row = addEl("row", (label ? `<span class="who" style="color:${ch.c}">${ch.n}</span>` : "") + `<div class="bub photo ${who}"><img alt="photo" src="${url}"></div>`); SFX.thump();
+  await wait(o.after ?? 1600); return row.querySelector(".bub");
+}
+async function narr(t, o = {}) { lastWho = ""; addEl("narr " + (o.cls || ""), esc(t)); await wait(o.t ?? 600 + t.length * 20); }
+async function evt(t, o = {}) { lastWho = ""; addEl("evt " + (o.cls || ""), esc(t)); await wait(o.t ?? 800); }
+async function sys(t, o = {}) { lastWho = ""; addEl("sys " + (o.cls || ""), `${o.tag ? `<small>${esc(o.tag)}</small>` : ""}${esc(t)}`); SFX.sys(); await wait(o.t ?? 900 + t.length * 14); }
+const CLOCKS = { "CHAPTER 1": "2:15 AM", "CHAPTER 2": "2:21 AM", "CHAPTER 3": "2:34 AM", "CHAPTER 4": "3:12 AM", "CHAPTER 5": "3:20 AM", "CHAPTER 6": "3:33 AM", "CHAPTER 7": "3:48 AM", "CHAPTER 8": "3:59 AM", "CHAPTER 9": "4:07 AM", "CHAPTER 10": "4:08 AM" };
+async function card(num, title) { if (CLOCKS[num]) setClock(CLOCKS[num]); lastWho = ""; const d = addEl("chcard", `<div class="num">${esc(num)}</div><h2>${esc(title)}</h2>`); SFX.thump(); await wait(2300); d.classList.add("settle"); }
+async function deleteMsg(b) { b.classList.add("deleted"); b.textContent = "Message deleted."; await wait(900); }
+async function ghostTyping(who, ms) { await typing(who, ms); }
+
+function choose(opts, o = {}) {
+  let done = false, resolve; const p = new Promise(r => resolve = r);
+  choicesEl.className = "choices" + (o.danger ? " danger" : "") + (o.keys ? " keys" : ""); choicesEl.innerHTML = "";
+  opts.forEach((op, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.style.animationDelay = (i * .1) + "s";
+    b.innerHTML = o.keys ? `<span class="k">${op.icon}</span>${esc(op.t)}` : (o.danger ? esc(op.t) : `<span class="n">${i + 1}</span>${esc(op.t)}`);
+    b.onclick = () => {
+      if (done) return; done = true; p.done = true; b.classList.add("picked"); SFX.click();
+      setTimeout(() => {
+        choicesEl.innerHTML = ""; choicesEl.className = "choices";
+        if (o.bubble !== false) { const l = lastWho !== "you"; lastWho = "you"; addEl("row r", (l ? `<span class="who" style="color:${CHAR.you.c}">You</span>` : "") + `<div class="bub you">${esc(op.t)}</div>`); }
+        resolve(i);
+      }, 360);
+    };
+    choicesEl.appendChild(b);
+  });
+  p.cancel = () => { if (done) return; done = true; p.done = true; choicesEl.innerHTML = ""; choicesEl.className = "choices"; resolve(-1); };
+  scrollEnd(true); return p;
+}
+const you = async (...opts) => { const i = await choose(opts.map(t => ({ t }))); await wait(300); return i; };
+
+/* ---------- HUD timers ---------- */
+function hudShow(label, s) { $("hudl").textContent = label; hudSet(s); $("hud").classList.add("on"); }
+function hudSet(s) { $("hudt").textContent = "00:" + String(Math.max(0, s)).padStart(2, "0"); $("hud").classList.toggle("low", s <= 10); }
+function hudHide() { $("hud").classList.remove("on", "low"); }
+function startTimer(sec, label, onTick) {
+  const my = gen; let left = sec, iv; hudShow(label, left);
+  const done = new Promise(res => { iv = setInterval(() => { if (gen !== my) { clearInterval(iv); return; } left--; hudSet(left); try { onTick && onTick(left); } catch (e) {} if (left <= 0) { clearInterval(iv); res(); } }, 1000); });
+  return { done, get left() { return left; }, set(n) { left = n; hudSet(n); }, stop() { clearInterval(iv); hudHide(); } };
 }
 
-document.addEventListener("keydown", e => {
-  const n = parseInt(e.key, 10);
-  const btns = choicesEl.querySelectorAll("button");
-  if (n >= 1 && n <= btns.length && !choicesEl.dataset.busy) btns[n - 1].click();
-});
-document.addEventListener("click", e => { if (!e.target.closest("button")) fast = true; });
-
-/* ---------- main flow ---------- */
-async function run() {
-  if (running) return; running = true;
-  trust = 0; picked = []; lastWho = ""; chat.innerHTML = '<div class="stamp">Today</div>';
-  $("ember").style.width = "6%"; $("progress").style.width = "0%";
-  setMood("night"); setTime("11:47 PM");
-  await sleep(1200);
-  locked = false;
-  for (const b of beats) {
-    fast = false;                       // every beat starts at a readable pace
-    await play(b.l);
-    const o = await ask(b.c);
-    await play(o.r);
-    await sleep(500);
-  }
-  fast = false; locked = true;          // the ending always plays at full pace, even after a tap
-  await sleep(600);
-  await play(endingLines(trust / MAX_TRUST));
-  $("progress").style.width = "100%";
-  await sleep(1800);
-  locked = false;
-  showEnding();
-  running = false;
+/* ---------- scenes ---------- */
+async function blackout(ms, snd = true) { const b = $("blackout"); b.classList.add("on"); if (snd) SFX.boom(); await wait(ms); b.classList.remove("on"); await wait(200); }
+async function frontCam() { const c = $("cam"); c.classList.add("on"); SFX.breath(); await wait(1700); c.classList.add("peek"); await wait(520); c.classList.remove("peek"); await wait(380); c.classList.remove("on"); await wait(300); }
+function toast(from, text) { $("toastF").textContent = from; $("toastT").textContent = text; const t = $("toast"); t.classList.add("in"); SFX.ping(); vib([60, 40, 60]); setTimeout(() => t.classList.remove("in"), 2800); }
+async function jumpscare(kind) {
+  const el = $("scare"), cv = $("scareCv"); const m = { face: () => drawFace(cv), back: () => drawBack(cv, false), door: () => drawDoor(cv), wrong: () => drawFace(cv, true) };
+  m[kind](); el.className = "scare on " + kind + (calm ? " calm" : ""); void el.offsetWidth; el.classList.add("go");
+  SFX.stinger(kind); vib(kind === "face" ? [90, 40, 220] : [70]); if (!calm) document.body.classList.add("shake");
+  if (calm) { await raw(1500); } else if (kind === "back") { await raw(190); el.classList.remove("go"); el.style.opacity = 0; await raw(90); drawBack(cv, true); el.style.opacity = 1; el.classList.add("close", "go"); tone(70, .5, "sawtooth", .5, 0, 25); await raw(260); }
+  else await raw({ face: 1500, door: 1700, wrong: 230 }[kind]);
+  el.className = "scare"; el.style.opacity = ""; document.body.classList.remove("shake");
 }
-
-function showEnding() {
-  const items = picked.map((t, i) => `<li style="animation-delay:${1.2 + i * 0.18}s">${esc(t)}</li>`).join("");
-  addEl("endcard", `
-    <div class="heart">♡</div>
-    <h2>I'm glad I stayed too.</h2>
-    <div class="the-end">The End</div>
-    <div class="recap"><h3>The words you chose</h3><ul>${items}</ul></div>
-    <div class="care">Somewhere tonight, someone is staring at a screen, typing and deleting the same three words. <b>Be the one who answers.</b><br><br>And if you are the one carrying something heavy, say it out loud to someone. It weighs less shared than you think.</div>
-    <button class="restart" id="again">Play again</button>`);
-  $("again").onclick = () => { stick = true; $("scroller").scrollTop = 0; run(); };
-}
-
-$("begin").onclick = () => {
-  $("intro").classList.add("gone");
-  $("app").classList.add("on");
-  run();
-};
 
 /* ============================================================
-   PARTICLES: stars, rain, fireflies / dawn motes
+   ENDINGS
    ============================================================ */
-const MOODS = {
-  night: { stars: 1,   rain: 0,   flies: 0,   },
-  rain:  { stars: .3,  rain: .55, flies: 0,   },
-  heavy: { stars: .08, rain: 1,   flies: 0,   },
-  warm:  { stars: .5,  rain: .08, flies: .9,  },
-  dawn:  { stars: .1,  rain: 0,   flies: .8,  },
-  day:   { stars: 0,   rain: 0,   flies: .55, }
-};
-const target = { ...MOODS.night }, cur = { ...MOODS.night };
-const cv = $("fx"), cx = cv.getContext("2d");
-let VW, VH;
-function size() { const d = Math.min(devicePixelRatio || 1, 2); VW = innerWidth; VH = innerHeight; cv.width = VW * d; cv.height = VH * d; cx.setTransform(d, 0, 0, d, 0, 0); }
-addEventListener("resize", size); size();
-
-const stars = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random() * .8, r: Math.random() * 1.3 + .3, p: Math.random() * 6.28, s: Math.random() * 1.6 + .5 }));
-const drops = Array.from({ length: 180 }, () => ({ x: Math.random(), y: Math.random(), l: Math.random() * 14 + 8, v: Math.random() * .5 + .7 }));
-const flies = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), p: Math.random() * 6.28, s: Math.random() * .00006 + .00002, r: Math.random() * 2.2 + 1 }));
-
-let last = performance.now();
-function frame(t) {
-  const dt = Math.min(t - last, 50); last = t;
-  for (const k in cur) cur[k] += (target[k] - cur[k]) * 0.012;
-  cx.clearRect(0, 0, VW, VH);
-
-  if (cur.stars > .01) {
-    for (const s of stars) {
-      const a = (0.35 + 0.65 * Math.abs(Math.sin(t * .001 * s.s + s.p))) * cur.stars;
-      cx.fillStyle = `rgba(230,225,255,${a})`;
-      cx.beginPath(); cx.arc(s.x * VW, s.y * VH, s.r, 0, 6.283); cx.fill();
-    }
-  }
-  if (cur.rain > .01) {
-    cx.strokeStyle = `rgba(170,190,235,${.3 * cur.rain})`; cx.lineWidth = 1; cx.beginPath();
-    for (const d of drops) {
-      d.y += d.v * dt * .0011 * (.7 + cur.rain * .6);
-      d.x -= dt * .00005;
-      if (d.y > 1.05) { d.y = -.05; d.x = Math.random() * 1.1; }
-      if (d.x < -.05) d.x = 1.05;
-      const x = d.x * VW, y = d.y * VH;
-      cx.moveTo(x, y); cx.lineTo(x - 2, y + d.l * (.6 + cur.rain * .6));
-    }
-    cx.stroke();
-  }
-  if (cur.flies > .01) {
-    for (const f of flies) {
-      f.y -= f.s * dt; if (f.y < -.05) { f.y = 1.05; f.x = Math.random(); }
-      const x = (f.x + Math.sin(t * .0003 + f.p) * .03) * VW, y = f.y * VH;
-      const a = (.25 + .75 * Math.abs(Math.sin(t * .0012 + f.p))) * cur.flies;
-      const g = cx.createRadialGradient(x, y, 0, x, y, f.r * 7);
-      g.addColorStop(0, `rgba(255,210,150,${a})`); g.addColorStop(1, "rgba(255,200,140,0)");
-      cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, f.r * 7, 0, 6.283); cx.fill();
-    }
-  }
-  requestAnimationFrame(frame);
+const ENDS = { true: "Survivor", turn: "Turned around", key: "Wrong key", sarah: "Chose Sarah", answered: "Answered yourself" };
+function foundEnds() { try { return JSON.parse(localStorage.getItem("tgc_ends") || "[]"); } catch (e) { return []; } }
+function markEnd(k) { try { const f = foundEnds(); if (!f.includes(k)) { f.push(k); localStorage.setItem("tgc_ends", JSON.stringify(f)); } } catch (e) { mem.add(k); } }
+const mem = new Set();
+function endChips() { const f = new Set([...foundEnds(), ...mem]); return `<div class="ends">${Object.entries(ENDS).map(([k, v]) => `<span class="${f.has(k) ? "f" : ""}">${f.has(k) ? "✓ " : "? "}${v}</span>`).join("")}</div>`; }
+async function finalScreen({ title, win, lines, key, retry }) {
+  markEnd(key); hudHide(); const fin = $("final"), box = $("fbox"); fin.classList.add("on");
+  box.innerHTML = `<div class="t ${win ? "win" : ""}">${esc(title)}</div>`;
+  let d = 0; for (const [txt, cls] of lines) { const p = document.createElement("p"); p.className = cls || ""; p.style.animationDelay = d + "s"; p.innerHTML = esc(txt); box.appendChild(p); d += 1.3; }
+  const b = document.createElement("div"); b.className = "fbtns"; b.style.opacity = 0; b.style.animationDelay = (d + .3) + "s";
+  if (retry != null) b.innerHTML += `<button id="fRetry" type="button">Try again from here</button>`;
+  b.innerHTML += `<button id="fAgain" type="button">${win ? "Play again" : "Start over"}</button>`; box.appendChild(b);
+  box.insertAdjacentHTML("beforeend", endChips().replace('class="ends"', `class="ends" style="opacity:0;animation:fadeUp 1s ease ${d + .6}s both"`));
+  if (win) box.insertAdjacentHTML("beforeend", `<div class="theend" style="opacity:0;animation:fadeUp 1s ease ${d + 1.2}s both">THE END</div>`);
+  $("fAgain").onclick = () => { fin.classList.remove("on"); begin(0); };
+  if (retry != null) $("fRetry").onclick = () => { fin.classList.remove("on"); begin(retry, true); };
+  throw END;
 }
-requestAnimationFrame(frame);
+async function badEnding(key, pre, lines, retryIdx) {
+  hudHide(); await pre(); await raw(400);
+  await finalScreen({ title: "SURVIVOR: NONE", lines, key, retry: retryIdx });
+}
+
+/* ============================================================
+   STORY
+   ============================================================ */
+const SIX = ["mia", "daniel", "sarah", "john", "unknown", "you"];
+async function lock() {
+  const L = $("lock"); L.classList.add("on"); mood("dread"); await wait(2200);
+  $("lockN").classList.add("in"); SFX.ping(); vib([80, 50, 80]);
+  await new Promise(res => { $("lockN").onclick = () => { SFX.click(); res(); }; });
+  L.classList.remove("on"); $("lockN").classList.remove("in"); await wait(800);
+}
+async function ch0(retry) {
+  setHead({ name: "DON'T LEAVE", list: SIX, danielPhoto: null }); mood("dread"); setClock("2:13 AM");
+  if (!retry) await lock();
+  await card("PROLOGUE", "2:13 AM");
+  await narr("The group has no profile picture."); await narr("No description."); await narr("Just a name:");
+  await sys("DON'T LEAVE", { cls: "huge", t: 1600 });
+  await narr("You open it. 6 members. You don't recognize any of them.");
+  await say("mia", "Is everyone here?"); await say("daniel", "I think so."); await say("sarah", "Who added us?"); await say("john", "I don't know.");
+  await you("Who are you people?", "Is this some kind of prank?");
+  await narr("Nobody answers.", { t: 1500 });
+  await say("mia", "Wait."); await say("mia", "You can see the messages?");
+  await you("Yes??", "Yes. Why wouldn't I?");
+  await say("daniel", "That's not possible."); await you("Why?");
+  await narr("Three dots appear. Disappear. Appear again."); await ghostTyping("sarah", 3500);
+  await say("sarah", "Because the sixth person isn't supposed to see them.", { t: 600 });
+  await narr("You look at the member list.");
+  addEl("memberlist", `Mia<br>Daniel<br>Sarah<br>John<br><span class="u">Unknown</span><br><span style="color:#a89fff">You</span>`); await wait(1800);
+  await narr("You tap Unknown.");
+  addEl("profile", `<div class="pic">?</div><b>Unknown</b><div>No profile picture<br>No phone number<br>No information</div><div class="seen">Last seen: 3 years ago</div>`); SFX.thump(); await wait(2600);
+}
+async function ch1() {
+  setHead({ list: SIX }); mood("dread");
+  await card("CHAPTER 1", "The Photograph");
+  await you("What's going on?"); await say("daniel", "We don't know."); await say("mia", "We woke up here too.");
+  await you("\"Here\"?"); await say("sarah", "In the group."); await you("That's not an answer.");
+  await photo("sarah", photoGroup(), { after: 2600 });
+  await narr("Five teenagers standing outside an old house. You recognize four of them. Mia. Daniel. Sarah. John."); await narr("The fifth person's face has been scratched out.", { cls: "red" });
+  await you("Who is that?"); await narr("Nobody responds.", { t: 1500 });
+  await say("sarah", "Don't say his name."); await you("Why?"); await say("sarah", "Because he might hear you.");
+  await narr("You laugh."); lightsFlicker(); await wait(1000); SFX.thump();
+  await say("unknown", "You already said it.", { t: 1400, after: 1500 }); lightsFlicker();
+  await narr("The chat goes silent.", { t: 1400 });
+  await say("daniel", "..."); await say("mia", "Everyone stop typing."); await say("john", "He's here.", { after: 1500 });
+}
+async function ch2() {
+  setHead({ list: SIX }); mood("dread");
+  await card("CHAPTER 2", "The Rules");
+  await narr("A new message appears. Not from a person.");
+  CHAR.system = { n: "SYSTEM", c: "#ff2d3d" };
+  await sys("SURVIVAL PROTOCOL INITIATED.", { tag: "SYSTEM" }); await sys("There are six of you."); await sys("Only one of you will leave.", { t: 1600 });
+  mood("still");
+  const rules = ["Don't say his name.", "Don't open the door.", "Don't turn around when you hear someone behind you.", "When the lights go out, stay completely still.", "If you receive a message from yourself... DO NOT ANSWER."];
+  for (let i = 0; i < rules.length; i++) { await sys(rules[i], { tag: "RULE " + (i + 1), t: 1300 }); }
+  $("rulesBtn").classList.remove("hide"); await evt("Tap RULES at the top any time to read them again.", { cls: "" });
+  await say("mia", "What the hell?", { t: 500 }); await say("daniel", "This isn't funny.", { t: 400 }); await say("john", "I'm leaving.", { t: 400 }); await say("sarah", "JOHN DON'T—", { cls: "big", t: 300 });
+  removeMember("john", "John left the group"); await evt("John has left the group.", { cls: "red", t: 800 }); mood("panic");
+  await narr("Five seconds pass.", { t: 2600 }); mood("dread");
+  await say("john", "Guys?", { t: 900 }); await narr("Everyone freezes.");
+  await say("daniel", "He left."); await say("john", "I'm outside."); await say("john", "Why is everyone still inside?");
+  await say("sarah", "John, don't message us."); await say("john", "Why?"); await say("sarah", "Because I can see you."); await narr("A pause.", { t: 1400 });
+  await say("john", "Where?");
+  await narr("Sarah sends a photo."); lightsFlicker();
+  const ph = await photo("sarah", photoJohn(), { after: 3000 });
+  await narr("It shows John standing outside the house. His back is facing the camera. And behind him... something tall is standing in the doorway.", { cls: "red", t: 2600 });
+  await say("john", "Sarah?"); await say("john", "That's not me.", { t: 700 });
+  await deleteMsg(ph); await evt("Message deleted.", { cls: "red" });
+  await say("john", "RUN.", { cls: "big", t: 300, after: 1800 });
+}
+async function ch3() {
+  setHead({ list: ["mia", "daniel", "sarah", "unknown", "you"] }); mood("dread");
+  await card("CHAPTER 3", "The First Task");
+  await sys("TASK 01", { tag: "SYSTEM" }); await sys("Find the red key.", { t: 800 }); await sys("You have 60 seconds.", { t: 600 });
+  mood("panic");
+  const T = startTimer(60, "TASK 01 · RED KEY");
+  await say("mia", "Where is it?", { t: 400, after: 200 }); await say("daniel", "Kitchen.", { t: 400, after: 200 }); await say("sarah", "No.", { t: 300, after: 150 }); await say("sarah", "Bedroom.", { t: 300 });
+  await you("How do you know?"); await say("sarah", "Because that's where we found it last time."); await you("Last time?!");
+  await narr("No response. You search the virtual room.", { t: 900 });
+  let found = false;
+  while (!found && T.left > 0) {
+    const c = choose([{ t: "SEARCH KITCHEN" }, { t: "SEARCH BEDROOM" }, { t: "SEARCH HALLWAY" }], { bubble: false });
+    const r = await Promise.race([c, T.done.then(() => -9)]);
+    if (r === -9) { c.cancel(); break; }
+    if (r === 1) { found = true; await sys("You found the red key.", { t: 1000 }); T.set(Math.min(T.left, 7)); }
+    else {
+      lightsFlicker(); await say("unknown", "Wrong room.", { t: 300, after: 200 }); T.set(Math.max(2, T.left - 8)); jumpscare("wrong"); await raw(260);
+    }
+  }
+  if (!found) await narr("The countdown eats the last seconds. You never found it.", { cls: "red" });
+  if (T.left > 0) await Promise.race([T.done]); T.stop();
+  await narr("00:03... 00:02... 00:01...", { t: 400 });
+  await blackout(2400, true); mood("still");
+  await sys("Task complete.", { tag: "SYSTEM" });
+  removeMember("daniel", "Daniel is not in the room"); await narr("The lights return. Daniel is gone.", { cls: "red" });
+  await say("mia", "Where's Daniel?", { t: 500 }); await say("sarah", "Don't look behind you.", { t: 300 });
+  await narr("You don't."); await frontCam();
+  await say("sarah", "Good.", { t: 400 }); await say("sarah", "You didn't look.", { t: 400 });
+  H.list = ["mia", "daniel", "sarah", "unknown", "you"]; renderHead();
+  await say("daniel", "I'm behind you.", { t: 900, after: 1200 }); lightsFlicker();
+  await narr("You slowly look at the chat. Not the room.");
+  await say("daniel", "Please don't turn around.", { t: 1100 }); await say("daniel", "That's not me.", { t: 1500, after: 1800 });
+}
+async function ch4() {
+  setHead({ list: ["mia", "daniel", "sarah", "unknown", "you"] }); mood("dread");
+  await card("CHAPTER 4", "The Second Member");
+  await evt("Daniel's profile changed. Last seen: NOW", { cls: "red", t: 1400 });
+  const d = addEl("typing", "<i></i><i></i><i></i>"); setSub("Daniel is typing…"); lastWho = "";
+  for (const t of ["Five seconds.", "Ten.", "Twenty."]) { await wait(2300); d.insertAdjacentHTML("afterend", ""); const n = addEl("narr", esc(t)); }
+  await wait(1600); d.remove(); setSub(null);
+  await say("daniel", "help", { t: 200, after: 700 }); await say("daniel", "help me", { t: 150, after: 500 }); await say("daniel", "help me", { t: 150, after: 400 }); await say("daniel", "help me", { t: 100, after: 300 });
+  mood("panic"); glitch(2600);
+  for (const [t, a] of [["HELP ME", 220], ["HELP ME", 160], ["HELP ME", 120], ["HELP ME", 90]]) { await say("daniel", t, { cls: "big", t: 80, after: a }); }
+  for (let i = 0; i < 6; i++) { await say("daniel", "HELP ME", { cls: "big", t: 30, after: 50 }); }
+  $("blackout").classList.add("on"); SFX.boom(); await wait(800);
+  H.danielPhoto = avatarBack(); renderHead(); await wait(500);
+  $("blackout").classList.remove("on"); await jumpscare("back");
+  SFX.ping(); vib([200]); await wait(700);
+  await narr("Daniel's profile picture is now a photograph of you. Taken from behind.", { cls: "red", t: 2600 });
+  await narr("You hear a notification sound. But your phone is already in your hand.", { t: 2400 });
+  await say("daniel", "Don't look behind you.", { t: 1200, after: 2000 }); mood("dread");
+}
+async function ch5() {
+  setHead({ list: ["mia", "daniel", "sarah", "unknown", "you"] }); mood("dread");
+  await card("CHAPTER 5", "The House");
+  await narr("Sarah finally tells you the truth.");
+  await say("sarah", "We were here three years ago."); await you("What happened?");
+  await say("sarah", "We thought it was a challenge."); await say("mia", "We found the house online."); await say("sarah", "People said someone died here."); await say("mia", "We didn't believe them.");
+  await you("Who died?"); await narr("Sarah doesn't respond.", { t: 1500 });
+  SFX.ping(); await narr("Your phone chimes. A notification, but no new message appears.", { cls: "red", t: 2800 });
+  await wait(2500); await say("unknown", "Did you hear that?", { t: 1300, after: 1600 }); lightsFlicker();
+  await sys("RULE VIOLATION DETECTED.", { tag: "SYSTEM" }); await sys("Someone said his name.", { t: 1500 }); mood("panic");
+  await evt("Members: 5 → 4", { cls: "red" }); removeMember("daniel", "4 members"); await evt("Daniel has been removed.", { cls: "red" }); await evt("John has been removed.", { cls: "red" });
+  await say("mia", "No."); await say("mia", "No no no.", { cls: "big" }); await say("sarah", "He's choosing us.", { t: 1200 });
+  await you("Who's \"he\"?"); await say("sarah", "The fifth person.", { t: 1600, after: 1800 });
+}
+async function ch6() {
+  setHead({ list: ["mia", "sarah", "unknown", "you"] }); mood("still");
+  await card("CHAPTER 6", "Don't Turn Around");
+  lightsFlicker(); await sys("TASK 02", { tag: "SYSTEM" }); await sys("Remain still for 30 seconds.", { t: 800 }); await sys("Do not turn around.", { t: 800 }); await sys("Do not respond to anyone behind you.", { t: 1100 });
+  await narr("The timer starts. Whatever you do, don't tap the button that wants you to look.", { t: 1500 });
+  let turned = false;
+  const lines = { 25: ["I'm behind you.", true], 20: ["Turn around.", false], 15: ["Please.", false], 10: ["I'm scared.", false], 5: ["You don't want to see what I'm seeing.", false] };
+  const T = startTimer(30, "TASK 02 · STAY STILL", left => {
+    if (left < 30 && left % 2 === 0) SFX.step(.08 + (30 - left) * .01);
+    if (left <= 24 && left % 3 === 0) SFX.breath();
+    if (left === 22 || left === 11 || left === 3) lightsFlicker();
+    const l = lines[left]; if (l) fire(async () => { await say("mia", l[0], { t: 250, after: 200, cls: left <= 5 ? "big" : "" }); if (l[1]) await narr("You know Mia is sitting beside you in the chat. You hear breathing. Behind you.", { cls: "red", t: 300 }); });
+  });
+  const c = choose([{ t: "[ TURN AROUND ]" }], { danger: true, bubble: false });
+  const r = await Promise.race([c, T.done.then(() => -9)]);
+  if (r === 0) { turned = true; T.stop(); }
+  else c.cancel();
+  if (turned) await badEnding("turn", async () => { await jumpscare("wrong"); await raw(300); await blackout(1400, true); await narr("You shouldn't have looked.", { cls: "red", t: 1500 }); }, [["You shouldn't have looked.", "hot"], ["The screen flashes.", "dim"], ["SURVIVOR: NONE", "hot"]], 6);
+  T.stop(); await narr("1 second... Silence.", { t: 1600 }); await sys("TASK COMPLETE.", { tag: "SYSTEM" });
+  await say("mia", "Good.", { t: 900 }); await say("mia", "You listened.", { t: 1200, after: 1500 });
+  removeMember("mia", "Mia left the group"); await evt("Mia has left the group.", { cls: "red", t: 1600 }); mood("dread");
+}
+async function ch7() {
+  setHead({ list: ["sarah", "unknown", "you"] }); mood("dread");
+  await card("CHAPTER 7", "The Video");
+  await narr("Only you and Sarah remain."); await narr("Sarah sends a video.");
+  await typing("sarah", 900); lastWho = "sarah";
+  const row = addEl("row", `<span class="who" style="color:${CHAR.sarah.c}">Sarah</span><div class="bub vid"><canvas width="320" height="200"></canvas><button class="play" type="button" aria-label="Play video"><span>▶</span></button></div>`);
+  const cv = row.querySelector("canvas"), pb = row.querySelector(".play"); const x = cv.getContext("2d"); x.fillStyle = "#0b0b0d"; x.fillRect(0, 0, 320, 200);
+  await new Promise(res => { pb.onclick = () => { pb.remove(); res(); }; });
+  mood("still"); await runVideo(cv); mood("dread");
+  await narr("It's footage from three years ago. Five teenagers enter the house, laughing. They reach a room. The camera points toward a wall.", { t: 2600 });
+  await narr("Written on it: ONE OF YOU MUST STAY.", { cls: "red", t: 1800 });
+  await you("Why didn't you tell me?"); await say("sarah", "Because I thought we could change it."); await you("Change what?"); await say("sarah", "The ending."); await you("What ending?");
+  await say("sarah", "There were supposed to be five of us.", { t: 1400 }); await narr("A pause.", { t: 1500 }); await say("sarah", "But one of us was already dead before we entered.", { t: 1700 });
+  await narr("You stare at the screen. Who was it?");
+  const g = await choose([{ t: "Was it Mia?" }, { t: "Was it Daniel?" }, { t: "Was it John?" }, { t: "...Was it you?" }]);
+  if (g === 3) await say("sarah", "You were paying attention.", { t: 1200 }); else await say("sarah", "No.", { t: 800 });
+  await say("sarah", "Me.", { t: 2000, after: 2000 });
+}
+async function ch8() {
+  setHead({ list: ["sarah", "unknown", "you"] }); mood("dread");
+  await card("CHAPTER 8", "Sarah");
+  await you("What?"); await say("sarah", "I died three years ago."); await say("sarah", "The others never accepted it."); await say("sarah", "That's why the house kept them.");
+  await you("Then why am I here?"); await narr("Sarah doesn't answer.", { t: 1800 });
+  await sys("FINAL TASK", { tag: "SYSTEM" }); await sys("Choose who leaves.", { t: 1400 });
+  let hes = false, attempts = 0;
+  const hesitate = () => fire(async () => { await wait(6000); if (!hes) { hes = true; await say("sarah", "Don't choose me."); await say("sarah", "Because I already died."); await say("sarah", "You haven't.", { after: 1200 }); await say("unknown", "Choose.", { t: 1200 }); lightsFlicker(); } });
+  hesitate();
+  while (true) {
+    const i = await choose([{ t: "SARAH" }, { t: "YOU" }], { bubble: false }); attempts++; hes = true;
+    if (i === 0) {
+      await badEnding("sarah", async () => { await say("sarah", "Thank you.", { t: 1400, after: 1500 }); await evt("The group disappears.", { cls: "red", t: 1600 }); await blackout(1600, true); setClock("7:42 AM"); },
+        [["You wake up. Everything seems normal.", "dim"], ["Then your phone shows:", "dim"], ["Sarah is typing…", "hot"], ["Sarah: You chose me.", "hot"], ["Sarah: So now you have to stay.", "hot"], ["SURVIVOR: NONE", "hot"]], 8);
+    }
+    glitch(900); await blackout(900, true);
+    await sys("ERROR", { tag: "SYSTEM", cls: "huge", t: 900 }); await sys("SURVIVOR CANNOT BE SELECTED.", { t: 1300 });
+    if (attempts === 1) { await narr("You try again.", { t: 1200 }); continue; }
+    break;
+  }
+  await narr("Same message.", { cls: "red" });
+  await say("sarah", "Don't fight it."); await say("sarah", "He's already decided.", { t: 1400 }); await say("sarah", "Run.", { t: 900, after: 800, cls: "big" });
+}
+async function ch9() {
+  setHead({ list: ["sarah", "unknown", "you"] }); mood("panic");
+  await card("CHAPTER 9", "The Last Task");
+  glitch(3500); lightsFlicker();
+  for (const [w, t] of [["mia", "RUN"], ["daniel", "RUN"], ["john", "RUN"], ["sarah", "NOW"]]) await say(w, t, { cls: "big", t: 60, after: 120 });
+  await sys("FINAL TASK: ESCAPE", { tag: "SYSTEM" });
+  await narr("A door appears.", { t: 1200 });
+  await choose([{ t: "OPEN THE DOOR" }], { danger: true, bubble: false }); SFX.thump();
+  await sys("DOOR LOCKED.", { t: 1300 }); await narr("Three keys appear: red, blue, black.", { t: 1500 });
+  await say("you", "Take the black key. It's the only one that works. Hurry.", { mirror: true, t: 1700, after: 800 }); lightsFlicker();
+  await narr("A message from... yourself.", { cls: "red", t: 1400 });
+  const a = await choose([{ t: "Who is this?" }, { t: "(Don't answer.)" }], { bubble: false });
+  if (a === 0) {
+    await badEnding("answered", async () => { await say("you", "Who is this?", { t: 300 }); await say("you", "You tell me.", { mirror: true, t: 1400, after: 1200 }); lightsFlicker(); await jumpscare("wrong"); await blackout(1400, true); },
+      [["You answered.", "hot"], ["The message was never from you.", "dim"], ["SURVIVOR: NONE", "hot"]], 9);
+  }
+  await narr("You don't answer. Rule 5.", { t: 1400 });
+  await say("sarah", "Think. What did we find first?", { t: 900 });
+  const k = await choose([{ t: "Red", icon: "🔴" }, { t: "Blue", icon: "🔵" }, { t: "Black", icon: "⚫" }], { keys: true, bubble: false });
+  if (k !== 0) {
+    await badEnding("key", async () => { await sys("Incorrect.", { tag: "SYSTEM" }); await narr("The door opens. Something is standing on the other side.", { cls: "red", t: 1600 }); await jumpscare("door"); await say("unknown", "You finally came back.", { t: 800, after: 800 }); await blackout(1600, true); },
+      [["You finally came back.", "hot"], ["The door never wanted you to leave.", "dim"], ["SURVIVOR: NONE", "hot"]], 9);
+  }
+  await narr("CLICK.", { cls: "red", t: 900 }); SFX.thump(); await narr("The door opens.", { t: 1400 });
+}
+async function ch10() {
+  mood("still"); hudHide(); await card("CHAPTER 10", "The Hallway");
+  const T = $("hallT"); const say2 = async (t, ms = 1800) => { T.textContent = t; await wait(ms); };
+  hallOn(true); await wait(1400); await say2("No chat. No messages. No music.", 2200); await say2("Just footsteps.", 1600);
+  for (let i = 1; i <= 3; i++) { await choose([{ t: ["ONE STEP", "TWO", "THREE"][i - 1] }].map(o => ({ t: "WALK FORWARD" })), { danger: true, bubble: false }); hall.target += 1; SFX.step(.35); await say2(["One step.", "Two.", "Three."][i - 1], 900); }
+  await wait(600); toast("Unknown", "You forgot something."); await say2("Your phone vibrates.", 1800); mood("panic");
+  await choose([{ t: "KEEP WALKING" }], { danger: true, bubble: false }); hall.target += 1; SFX.step(.4); toast("Unknown", "Don't turn around."); await say2("Another message. Don't turn around.", 1600);
+  for (let i = 0; i < 3; i++) {
+    const c = await choose([{ t: "KEEP WALKING" }, { t: "LOOK BEHIND YOU" }], { danger: true, bubble: false });
+    if (c === 1) { hallOn(false); await badEnding("turn", async () => { await jumpscare("wrong"); await blackout(1200, true); }, [["You shouldn't have looked.", "hot"], ["SURVIVOR: NONE", "hot"]], 10); }
+    hall.target += 1; SFX.step(.5 + i * .15); if (i === 0) { toast("Unknown", "I said..."); await say2("Footsteps behind you. Slow. Heavy.", 1400); } else if (i === 1) { toast("Unknown", "DON'T TURN AROUND."); lightsFlicker(); await say2("Closer.", 1000); } else await say2("The hallway seems endless.", 900);
+    SFX.step(.55); await raw(700); SFX.step(.65);
+  }
+  T.textContent = ""; hall.target += 2; for (let i = 0; i < 4; i++) { SFX.step(.7 + i * .1); await raw(380 - i * 60); } SFX.boom(); await raw(500);
+  await jumpscare("face"); hallOn(false); $("blackout").classList.add("on"); await wait(3200);
+}
+async function ch11() {
+  $("blackout").classList.remove("on"); setHead({ name: "Messages", list: [], sub: "Saturday, 6:51 AM" }); mood("dawn"); setClock("6:51 AM");
+  await card("CHAPTER 11", "The Exit");
+  await narr("You wake up. It's morning. You're lying outside the abandoned house. Your phone is beside you."); await narr("No group chat. No notifications. You check your messages. Nothing.", { t: 2200 });
+  await narr("You laugh nervously. You survived.", { t: 1800 }); await narr("You stand up. Then your phone vibrates.", { t: 1400 });
+  toast("Messages", "1 new message"); await wait(1800);
+  await say("mia", "Did you make it out?", { t: 1800 }); await narr("You stare at the screen. Mia is dead.", { cls: "red" }); await narr("You don't reply."); mood("dread");
+  await say("daniel", "We're still here.", { t: 1400 }); await say("john", "We're still here.", { t: 700 }); await say("sarah", "We're still here.", { t: 700 });
+  await narr("Four messages. You throw the phone onto the ground. It keeps vibrating.", { cls: "red", t: 2400 }); vib([200, 100, 200, 100, 400]);
+}
+async function ch12() {
+  setHead({ name: "Messages", list: [], sub: null }); mood("calm"); setClock("7:42 AM");
+  await card("EPILOGUE", "7:42 AM");
+  await narr("You finally get home. You change your clothes. Lock the doors. Close the curtains.", { t: 2400 }); await narr("You sit on your bed. Your phone is still on the floor. You don't touch it.", { t: 2600 });
+  await wait(1200); SFX.ping(); vib([80, 50, 80]); toast("Messages", "You were added to a group."); await narr("Notification. You slowly pick up the phone.", { t: 2200 });
+  setHead({ name: "WE MADE IT", list: ["mia", "daniel", "john", "sarah", "you"], sub: null }); mood("dread"); await sys("WE MADE IT", { cls: "huge", t: 1400 }); await narr("You open it. There are five members. Mia. Daniel. John. Sarah. And you.", { t: 2600 });
+  await narr("You scroll upward. The first message was sent three years ago. By Sarah.", { t: 2400 });
+  const first = document.createElement("div"); first.className = "row"; first.innerHTML = `<span class="who" style="color:${CHAR.sarah.c}">Sarah · 3 years ago</span><div class="bub sarah">We need five people.</div>`; chat.insertBefore(first, chat.firstChild); sc.scrollTo({ top: 0, behavior: "smooth" }); stick = false; await wait(2600); stick = true; scrollEnd(true);
+  await say("sarah", "There's one problem."); await you("What?"); await say("sarah", "We only have four.", { t: 1800, after: 1500 }); lightsFlicker();
+  await narr("You stare at the member list. There are five. You count again. Mia. Daniel. John. Sarah. You. Five.", { t: 3000 });
+  H.list = ["mia", "daniel", "john", "sarah", "you", "unknown"]; renderHead(); setSub("6 MEMBERS", true); await evt("Unknown joined the group.", { cls: "red", t: 1500 });
+  SFX.thump(); await ghostTyping("unknown", 4000); await narr("It stops.", { t: 1400 });
+  await say("unknown", "Thank you for bringing me another one.", { t: 1800, after: 2200 });
+  await blackout(2600, true);
+  await finalScreen({ title: "SURVIVOR: YOU", win: true, key: "true", lines: [["5 participants entered.", "dim"], ["4 were claimed.", "hot"], ["1 survived.", ""], ["But survival was never the same thing as escape.", "hot"]] });
+}
+const CHAPS = [ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9, ch10, ch11, ch12];
+const PROG = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/* ============================================================
+   RUN
+   ============================================================ */
+function resetUI() {
+  chat.innerHTML = ""; choicesEl.innerHTML = ""; choicesEl.className = "choices"; hudHide(); $("cam").classList.remove("on", "peek"); $("blackout").classList.remove("on"); $("lock").classList.remove("on");
+  $("scare").className = "scare"; $("toast").classList.remove("in"); $("rules").classList.remove("on"); document.body.classList.remove("shake", "glitch"); hallOn(false); lastWho = ""; stick = true; $("hallT").textContent = "";
+}
+async function begin(i, retry) {
+  const g = ++gen; resetUI(); if (i === 0) { $("rulesBtn").classList.add("hide"); H.danielPhoto = null; } else $("rulesBtn").classList.remove("hide");
+  try { for (let k = i; k < CHAPS.length; k++) { cur = k; $("progress").style.width = (k / CHAPS.length * 100) + "%"; await CHAPS[k](retry && k === i); } }
+  catch (e) { if (e !== CANCEL && e !== END) console.error(e); }
+}
+$("begin").onclick = () => {
+  calm = $("optCalm").checked; document.body.classList.toggle("calm", calm); A.on = $("optSound").checked; aInit(); setSound(A.on);
+  $("intro").classList.add("gone"); $("app").classList.add("on"); begin(0);
+};
+$("muteBtn").onclick = () => { setSound(!A.on); };
+$("rulesBtn").onclick = () => $("rules").classList.add("on");
+$("rulesClose").onclick = () => $("rules").classList.remove("on");
+document.addEventListener("keydown", e => { const n = parseInt(e.key, 10), b = choicesEl.querySelectorAll("button"); if (n >= 1 && n <= b.length) b[n - 1].click(); });
 </script>
 </body>
 </html>
